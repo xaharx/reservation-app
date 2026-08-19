@@ -1,0 +1,352 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum ReservationStatus {
+  PENDING
+  CONFIRMED
+  SEATED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum ReservationSource {
+  MOBILE_APP
+  WEB
+  PHONE
+  WALK_IN
+  ADMIN
+}
+
+enum AdminRole {
+  SUPER_ADMIN
+  ADMIN
+  MANAGER
+  EDITOR
+}
+
+enum BannerPlacement {
+  HOME_HERO
+  HOME_PROMOTION
+  RESERVATION
+  APP_MODAL
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  PAID
+  PREPARING
+  READY
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+model Reservation {
+  id               BigInt            @id @default(autoincrement()) @db.UnsignedBigInt
+  confirmationCode String            @unique @map("confirmation_code") @db.VarChar(32)
+  guestName        String            @map("guest_name") @db.VarChar(120)
+  guestEmail       String            @map("guest_email") @db.VarChar(191)
+  guestPhone       String            @map("guest_phone") @db.VarChar(32)
+  reservationDate  DateTime          @map("reservation_date") @db.Date
+  reservationTime  DateTime          @map("reservation_time") @db.Time(0)
+  partySize        Int               @map("party_size") @db.UnsignedTinyInt
+  status           ReservationStatus @default(PENDING)
+  source           ReservationSource @default(MOBILE_APP)
+  specialRequests  String?           @map("special_requests") @db.Text
+  occasion         String?           @db.VarChar(80)
+  cancelledAt      DateTime?         @map("cancelled_at") @db.DateTime(3)
+  cancellationNote String?           @map("cancellation_note") @db.VarChar(500)
+  deviceId         String?           @map("device_id") @db.VarChar(255)
+  os               String?           @db.VarChar(30)
+  createdAt        DateTime          @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt        DateTime          @updatedAt @map("updated_at") @db.DateTime(3)
+
+  @@index([reservationDate, reservationTime, status], map: "idx_reservations_schedule_status")
+  @@index([guestEmail], map: "idx_reservations_guest_email")
+  @@index([guestPhone], map: "idx_reservations_guest_phone")
+  @@map("reservations")
+}
+
+model MenuCategory {
+  id          BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  name        String    @unique @db.VarChar(120)
+  description String?   @db.VarChar(500)
+  sortOrder   Int       @default(0) @map("sort_order")
+  isPublished Boolean   @default(true) @map("is_published")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt   DateTime? @map("deleted_at") @db.DateTime(3)
+
+  items MenuItem[]
+
+  @@index([isPublished, sortOrder, deletedAt], map: "idx_menu_categories_display")
+  @@map("menu_categories")
+}
+
+model MenuItem {
+  id          BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  categoryId  BigInt    @map("category_id") @db.UnsignedBigInt
+  name        String    @db.VarChar(160)
+  description String?   @db.Text
+  priceCents  Int       @map("price_cents") @db.UnsignedInt
+  currency    String    @default("usd") @db.VarChar(3)
+  imageUrl    String?   @map("image_url") @db.VarChar(500)
+  isAvailable Boolean   @default(true) @map("is_available")
+  sortOrder   Int       @default(0) @map("sort_order")
+  isPublished Boolean   @default(true) @map("is_published")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt   DateTime? @map("deleted_at") @db.DateTime(3)
+
+  category   MenuCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  orderItems OrderItem[]
+
+  @@index([categoryId, isPublished, sortOrder, deletedAt], map: "idx_menu_items_display")
+  @@map("menu_items")
+}
+
+model Order {
+  id               BigInt        @id @default(autoincrement()) @db.UnsignedBigInt
+  confirmationCode String        @unique @map("confirmation_code") @db.VarChar(32)
+  guestName        String        @map("guest_name") @db.VarChar(120)
+  guestEmail       String        @map("guest_email") @db.VarChar(191)
+  guestPhone       String        @map("guest_phone") @db.VarChar(32)
+  status           OrderStatus   @default(PENDING_PAYMENT)
+  paymentStatus    PaymentStatus @default(PENDING) @map("payment_status")
+  paymentProvider  String        @default("stripe") @map("payment_provider") @db.VarChar(30)
+  paymentReference String?       @map("payment_reference") @db.VarChar(191)
+  currency         String        @default("usd") @db.VarChar(3)
+  subtotalCents    Int           @map("subtotal_cents") @db.UnsignedInt
+  totalCents       Int           @map("total_cents") @db.UnsignedInt
+  notes            String?       @db.VarChar(500)
+  source           ReservationSource @default(MOBILE_APP)
+  deviceId         String?       @map("device_id") @db.VarChar(255)
+  os               String?       @db.VarChar(30)
+  paidAt           DateTime?     @map("paid_at") @db.DateTime(3)
+  cancelledAt      DateTime?     @map("cancelled_at") @db.DateTime(3)
+  cancellationNote String?       @map("cancellation_note") @db.VarChar(500)
+  createdAt        DateTime      @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt        DateTime      @updatedAt @map("updated_at") @db.DateTime(3)
+
+  items OrderItem[]
+
+  @@index([guestEmail], map: "idx_orders_guest_email")
+  @@index([status, createdAt], map: "idx_orders_status")
+  @@map("orders")
+}
+
+model OrderItem {
+  id         BigInt  @id @default(autoincrement()) @db.UnsignedBigInt
+  orderId    BigInt  @map("order_id") @db.UnsignedBigInt
+  menuItemId BigInt  @map("menu_item_id") @db.UnsignedBigInt
+  itemName   String  @map("item_name") @db.VarChar(160)
+  unitCents  Int     @map("unit_cents") @db.UnsignedInt
+  quantity   Int     @db.UnsignedSmallInt
+  lineCents  Int     @map("line_cents") @db.UnsignedInt
+  notes      String? @db.VarChar(255)
+
+  order    Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItem MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Restrict)
+
+  @@index([orderId], map: "idx_order_items_order")
+  @@map("order_items")
+}
+
+model Gallery {
+  id          BigInt     @id @default(autoincrement()) @db.UnsignedBigInt
+  title       String?    @db.VarChar(180)
+  altText     String?    @map("alt_text") @db.VarChar(255)
+  imageUrl    String     @map("image_url") @db.VarChar(500)
+  category    String?    @db.VarChar(80)
+  sortOrder   Int        @default(0) @map("sort_order")
+  isPublished Boolean    @default(true) @map("is_published")
+  createdById BigInt?    @map("created_by_id") @db.UnsignedBigInt
+  createdAt   DateTime   @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt   DateTime   @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt   DateTime?  @map("deleted_at") @db.DateTime(3)
+
+  createdBy AdminUser? @relation("GalleryCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([isPublished, sortOrder, deletedAt], map: "idx_gallery_display")
+  @@index([category], map: "idx_gallery_category")
+  @@map("gallery")
+}
+
+model Banner {
+  id          BigInt          @id @default(autoincrement()) @db.UnsignedBigInt
+  title       String           @db.VarChar(180)
+  subtitle    String?          @db.VarChar(300)
+  imageUrl    String           @map("image_url") @db.VarChar(500)
+  actionLabel String?          @map("action_label") @db.VarChar(80)
+  actionUrl   String?          @map("action_url") @db.VarChar(500)
+  placement   BannerPlacement
+  startsAt    DateTime?        @map("starts_at") @db.DateTime(3)
+  endsAt      DateTime?        @map("ends_at") @db.DateTime(3)
+  sortOrder   Int              @default(0) @map("sort_order")
+  isPublished Boolean          @default(false) @map("is_published")
+  createdById BigInt?          @map("created_by_id") @db.UnsignedBigInt
+  createdAt   DateTime         @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt   DateTime         @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt   DateTime?        @map("deleted_at") @db.DateTime(3)
+
+  createdBy AdminUser? @relation("BannerCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([placement, isPublished, startsAt, endsAt, deletedAt], map: "idx_banners_active")
+  @@map("banners")
+}
+
+model About {
+  id          BigInt     @id @default(autoincrement()) @db.UnsignedBigInt
+  sectionKey  String     @unique @map("section_key") @db.VarChar(100)
+  title       String     @db.VarChar(180)
+  content     String     @db.LongText
+  imageUrl    String?    @map("image_url") @db.VarChar(500)
+  sortOrder   Int        @default(0) @map("sort_order")
+  isPublished Boolean    @default(true) @map("is_published")
+  createdById BigInt?    @map("created_by_id") @db.UnsignedBigInt
+  createdAt   DateTime   @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt   DateTime   @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt   DateTime?  @map("deleted_at") @db.DateTime(3)
+
+  createdBy AdminUser? @relation("AboutCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([isPublished, sortOrder, deletedAt], map: "idx_about_display")
+  @@map("about")
+}
+
+model Contact {
+  id          BigInt     @id @default(autoincrement()) @db.UnsignedBigInt
+  label       String     @db.VarChar(100)
+  phone       String?    @db.VarChar(32)
+  email       String?    @db.VarChar(191)
+  addressLine1 String?   @map("address_line_1") @db.VarChar(255)
+  addressLine2 String?   @map("address_line_2") @db.VarChar(255)
+  city        String?    @db.VarChar(100)
+  country     String?    @db.VarChar(100)
+  postalCode  String?    @map("postal_code") @db.VarChar(24)
+  latitude    Decimal?   @db.Decimal(10, 7)
+  longitude   Decimal?   @db.Decimal(10, 7)
+  openingHours Json?     @map("opening_hours")
+  isPrimary   Boolean    @default(false) @map("is_primary")
+  createdById BigInt?    @map("created_by_id") @db.UnsignedBigInt
+  createdAt   DateTime   @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt   DateTime   @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt   DateTime?  @map("deleted_at") @db.DateTime(3)
+
+  createdBy AdminUser? @relation("ContactCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([isPrimary, deletedAt], map: "idx_contact_primary")
+  @@map("contact")
+}
+
+model SocialMedia {
+  id          BigInt     @id @default(autoincrement()) @db.UnsignedBigInt
+  platform    String     @unique @db.VarChar(50)
+  profileUrl  String     @map("profile_url") @db.VarChar(500)
+  iconUrl     String?    @map("icon_url") @db.VarChar(500)
+  sortOrder   Int        @default(0) @map("sort_order")
+  isPublished Boolean    @default(true) @map("is_published")
+  createdById BigInt?    @map("created_by_id") @db.UnsignedBigInt
+  createdAt   DateTime   @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt   DateTime   @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt   DateTime?  @map("deleted_at") @db.DateTime(3)
+
+  createdBy AdminUser? @relation("SocialMediaCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([isPublished, sortOrder, deletedAt], map: "idx_social_media_display")
+  @@map("social_media")
+}
+
+model CmsPage {
+  id             BigInt     @id @default(autoincrement()) @db.UnsignedBigInt
+  slug           String     @unique @db.VarChar(191)
+  title          String     @db.VarChar(255)
+  content        String     @db.LongText
+  metaTitle      String?    @map("meta_title") @db.VarChar(255)
+  metaDescription String?   @map("meta_description") @db.VarChar(500)
+  isPublished    Boolean    @default(false) @map("is_published")
+  publishedAt    DateTime? @map("published_at") @db.DateTime(3)
+  createdById    BigInt?    @map("created_by_id") @db.UnsignedBigInt
+  createdAt      DateTime   @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt      DateTime   @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt      DateTime?  @map("deleted_at") @db.DateTime(3)
+
+  createdBy AdminUser? @relation("CmsPageCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([isPublished, publishedAt, deletedAt], map: "idx_cms_pages_public")
+  @@map("cms_pages")
+}
+
+model AppSetting {
+  id          BigInt     @id @default(autoincrement()) @db.UnsignedBigInt
+  settingKey  String     @unique @map("setting_key") @db.VarChar(191)
+  value       Json
+  description String?    @db.VarChar(500)
+  isPublic    Boolean    @default(false) @map("is_public")
+  updatedById BigInt?    @map("updated_by_id") @db.UnsignedBigInt
+  createdAt   DateTime   @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt   DateTime   @updatedAt @map("updated_at") @db.DateTime(3)
+
+  updatedBy AdminUser? @relation("AppSettingUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@index([isPublic], map: "idx_app_settings_public")
+  @@map("app_settings")
+}
+
+model AdminUser {
+  id             BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  firstName      String    @map("first_name") @db.VarChar(80)
+  lastName       String    @map("last_name") @db.VarChar(80)
+  email          String    @unique @db.VarChar(191)
+  passwordHash   String    @map("password_hash") @db.VarChar(255)
+  role           AdminRole @default(EDITOR)
+  isActive       Boolean   @default(true) @map("is_active")
+  lastLoginAt    DateTime? @map("last_login_at") @db.DateTime(3)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt      DateTime? @map("deleted_at") @db.DateTime(3)
+
+  createdGalleries    Gallery[]     @relation("GalleryCreatedBy")
+  createdBanners      Banner[]      @relation("BannerCreatedBy")
+  createdAboutSections About[]      @relation("AboutCreatedBy")
+  createdContacts     Contact[]     @relation("ContactCreatedBy")
+  createdSocialMedia  SocialMedia[] @relation("SocialMediaCreatedBy")
+  createdCmsPages     CmsPage[]     @relation("CmsPageCreatedBy")
+  updatedSettings     AppSetting[]  @relation("AppSettingUpdatedBy")
+  auditLogs           AuditLog[]    @relation("AuditActor")
+
+  @@index([role, isActive, deletedAt], map: "idx_admin_users_access")
+  @@map("admin_users")
+}
+
+model AuditLog {
+  id          BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  adminUserId BigInt?   @map("admin_user_id") @db.UnsignedBigInt
+  action      String    @db.VarChar(100)
+  entityType  String    @map("entity_type") @db.VarChar(100)
+  entityId    String?   @map("entity_id") @db.VarChar(64)
+  oldValues   Json?     @map("old_values")
+  newValues   Json?     @map("new_values")
+  ipAddress   String?   @map("ip_address") @db.VarChar(45)
+  userAgent   String?   @map("user_agent") @db.VarChar(512)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+
+  adminUser AdminUser? @relation("AuditActor", fields: [adminUserId], references: [id], onDelete: SetNull)
+
+  @@index([entityType, entityId, createdAt], map: "idx_audit_logs_entity")
+  @@index([adminUserId, createdAt], map: "idx_audit_logs_actor")
+  @@map("audit_logs")
+}
