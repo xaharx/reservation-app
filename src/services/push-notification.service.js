@@ -58,11 +58,13 @@ class PushNotificationService {
    */
   async send({ token, title, body, data = {} }) {
     if (!token) {
+      logger.info('Push notification skipped — no device token on record.', { title });
       return { skipped: true, reason: 'no-token' };
     }
 
     const messaging = this._getMessaging();
     if (!messaging) {
+      logger.info('Push notification skipped — Firebase Admin not configured.', { title });
       return { skipped: true, reason: 'not-configured' };
     }
 
@@ -72,9 +74,19 @@ class PushNotificationService {
         notification: { title, body },
         data: Object.fromEntries(Object.entries(data).map(([key, value]) => [key, String(value)])),
       });
+      logger.info('Push notification sent successfully.', {
+        messageId,
+        title,
+        tokenPrefix: token.slice(0, 12),
+      });
       return { skipped: false, messageId };
     } catch (error) {
-      logger.error('Failed to send push notification.', { error: error.message, title });
+      logger.error('Failed to send push notification.', {
+        error: error.message,
+        code: error.code,
+        title,
+        tokenPrefix: token.slice(0, 12),
+      });
       return { skipped: true, reason: 'send-error', error: error.message };
     }
   }
