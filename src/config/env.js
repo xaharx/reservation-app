@@ -26,7 +26,12 @@ const environmentSchema = z.object({
   FIREBASE_SERVICE_ACCOUNT_PATH: z.string().optional(),
   SMTP_HOST: z.string().default('smtp.ionos.com'),
   SMTP_PORT: z.coerce.number().int().min(1).max(65535).default(587),
-  SMTP_SECURE: z.coerce.boolean().default(false),
+  // z.coerce.boolean() would treat the literal string "false" as truthy
+  // (JS: Boolean("false") === true) — this enum+transform avoids that trap.
+  SMTP_SECURE: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
   SMTP_USER: z.string().optional(),
   SMTP_PASSWORD: z.string().optional(),
   EMAIL_FROM_NAME: z.string().default('Ora de Nuit'),
