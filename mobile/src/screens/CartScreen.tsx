@@ -17,6 +17,7 @@ import type { MainDrawerScreenProps } from '../navigation/types';
 import { colors } from '../theme/colors';
 import { useCart } from '../context/CartContext';
 import { ApiRequestError, createOrder } from '../api/orders';
+import { getPushToken } from '../notifications/push';
 
 type Props = MainDrawerScreenProps<'Cart'>;
 
@@ -69,9 +70,11 @@ export default function CartScreen({ navigation }: Props) {
 
     setSubmitting(true);
     try {
+      const pushToken = await getPushToken();
       const { order, checkoutUrl } = await createOrder({
         ...result.data,
         items: lines.map((line) => ({ menuItemId: line.menuItemId, quantity: line.quantity })),
+        pushToken,
       });
       setPlacedOrder({ confirmationCode: order.confirmationCode, guestEmail: order.guestEmail });
       clear();

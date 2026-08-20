@@ -22,6 +22,7 @@ import {
   type ReservationFormField,
 } from '../validation/reservationSchema';
 import { ApiRequestError, createReservation } from '../api/reservations';
+import { getPushToken } from '../notifications/push';
 
 type Props = MainDrawerScreenProps<'Reservation'>;
 
@@ -113,7 +114,8 @@ export default function ReservationFormScreen(_props: Props) {
 
     setSubmitting(true);
     try {
-      const reservation = await createReservation(result.data);
+      const pushToken = await getPushToken();
+      const reservation = await createReservation({ ...result.data, pushToken });
       Alert.alert(
         'Booking confirmed',
         `Your confirmation code is ${reservation.confirmationCode}. Keep it handy to check your reservation status later.`,

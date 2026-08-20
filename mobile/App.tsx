@@ -1,4 +1,7 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { Alert } from 'react-native';
+import { getApp } from '@react-native-firebase/app';
+import { getMessaging, onMessage } from '@react-native-firebase/messaging';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { NavigationContainer, type LinkingOptions } from '@react-navigation/native';
@@ -185,6 +188,18 @@ function MainDrawer() {
 }
 
 export default function App() {
+  useEffect(() => {
+    // FCM only auto-displays notifications when the app is backgrounded or
+    // killed — while the app is open, we have to show it ourselves.
+    const unsubscribe = onMessage(getMessaging(getApp()), async (remoteMessage) => {
+      const title = remoteMessage.notification?.title ?? 'Ora de Nuit';
+      const body = remoteMessage.notification?.body ?? '';
+      Alert.alert(title, body);
+    });
+
+    return unsubscribe;
+  }, []);
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <CartProvider>

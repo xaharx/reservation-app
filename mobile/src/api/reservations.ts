@@ -94,11 +94,14 @@ export type CreateReservationInput = {
   reservationTime: string;
   guestCount: number;
   specialRequest?: string;
+  pushToken?: string | null;
 };
 
 export function createReservation(input: CreateReservationInput): Promise<ReservationResponse> {
+  const { pushToken, ...rest } = input;
   return postJson<ReservationResponse>('/reservations', {
-    ...input,
+    ...rest,
+    ...(pushToken ? { pushToken } : {}),
     os: Platform.OS === 'ios' || Platform.OS === 'android' ? Platform.OS : 'web',
   });
 }

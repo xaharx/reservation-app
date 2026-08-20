@@ -81,6 +81,7 @@ export type CreateOrderInput = {
   phone: string;
   items: { menuItemId: string; quantity: number; notes?: string }[];
   notes?: string;
+  pushToken?: string | null;
 };
 
 export type CreateOrderResult = {
@@ -89,8 +90,10 @@ export type CreateOrderResult = {
 };
 
 export function createOrder(input: CreateOrderInput): Promise<CreateOrderResult> {
+  const { pushToken, ...rest } = input;
   return postJson<CreateOrderResult>('/orders', {
-    ...input,
+    ...rest,
+    ...(pushToken ? { pushToken } : {}),
     os: Platform.OS === 'ios' || Platform.OS === 'android' ? Platform.OS : 'web',
   });
 }
