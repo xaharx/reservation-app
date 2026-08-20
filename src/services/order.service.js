@@ -4,6 +4,7 @@ const logger = require('../config/logger');
 const { OrderRepository } = require('../repositories/order.repository');
 const { MenuRepository } = require('../repositories/menu.repository');
 const { StripeGateway } = require('./stripe-gateway');
+const { NotificationService } = require('./notification.service');
 const { HTTP_STATUS } = require('../constants/http-status');
 const { ApiError } = require('../utils/api-error');
 
@@ -50,6 +51,7 @@ class OrderService {
     orderRepository = new OrderRepository(),
     menuRepository = new MenuRepository(),
     stripeGateway = new StripeGateway(),
+    notificationService = new NotificationService(),
     confirmationCodeGenerator = createConfirmationCode,
     clock = () => new Date(),
     checkoutReturnScheme = env.ORDER_CHECKOUT_RETURN_SCHEME,
@@ -57,6 +59,7 @@ class OrderService {
     this.orderRepository = orderRepository;
     this.menuRepository = menuRepository;
     this.stripeGateway = stripeGateway;
+    this.notificationService = notificationService;
     this.confirmationCodeGenerator = confirmationCodeGenerator;
     this.clock = clock;
     this.checkoutReturnScheme = checkoutReturnScheme;
@@ -111,6 +114,7 @@ class OrderService {
       source: 'MOBILE_APP',
       deviceId: input.deviceId,
       os: input.os,
+      pushToken: input.pushToken,
       items: {
         create: lineItems.map(({ currency: _currency, ...item }) => item),
       },
@@ -195,6 +199,8 @@ class OrderService {
       cancellationNote: input.reason || null,
     });
 
+    await this.notificationService.notifyOrderCancelled(updatedOrder);
+
     return toOrderResponse(updatedOrder);
   }
 
@@ -214,7 +220,7 @@ class OrderService {
       return;
     }
 
-    await this.orderRepository.updateStatus(order.id, {
+    const updatedOrder = await this.orderRepository.updateStatus(order.id, {
       status: 'PAID',
       paymentStatus: 'PAID',
       paidAt: this.clock(),
@@ -222,6 +228,8 @@ class OrderService {
       // PaymentIntent id, since refunds are issued against the PaymentIntent.
       paymentReference: session.payment_intent || order.paymentReference,
     });
+
+    await this.notificationService.notifyOrderPaid(updatedOrder);
   }
 }
 

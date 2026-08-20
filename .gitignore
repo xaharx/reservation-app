@@ -2,6 +2,7 @@ node_modules/
 .env
 .env.*
 !.env.example
+firebase-service-account*.json
 coverage/
 src/logs/*.log
 uploads/*

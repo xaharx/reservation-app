@@ -1,5 +1,6 @@
 const { randomUUID } = require('crypto');
 const { ReservationRepository } = require('../repositories/reservation.repository');
+const { NotificationService } = require('./notification.service');
 const { HTTP_STATUS } = require('../constants/http-status');
 const { ApiError } = require('../utils/api-error');
 
@@ -39,10 +40,12 @@ function toReservationResponse(reservation, request) {
 class ReservationService {
   constructor({
     reservationRepository = new ReservationRepository(),
+    notificationService = new NotificationService(),
     confirmationCodeGenerator = createConfirmationCode,
     clock = () => new Date(),
   } = {}) {
     this.reservationRepository = reservationRepository;
+    this.notificationService = notificationService;
     this.confirmationCodeGenerator = confirmationCodeGenerator;
     this.clock = clock;
   }
@@ -60,7 +63,10 @@ class ReservationService {
       source: 'MOBILE_APP',
       deviceId: input.deviceId,
       os: input.os,
+      pushToken: input.pushToken,
     });
+
+    await this.notificationService.notifyReservationCreated(reservation);
 
     return toReservationResponse(reservation, input);
   }
@@ -111,6 +117,8 @@ class ReservationService {
       cancelledAt: this.clock(),
       cancellationNote: input.reason || null,
     });
+
+    await this.notificationService.notifyReservationStatusChanged(updatedReservation);
 
     return toReservationResponse(updatedReservation, {
       firstName: updatedReservation.guestName.split(' ')[0],
@@ -163,6 +171,8 @@ class ReservationService {
         cancellationNote: input.cancellationNote,
       }),
     });
+
+    await this.notificationService.notifyReservationStatusChanged(updatedReservation);
 
     return toReservationResponse(updatedReservation, {
       firstName: updatedReservation.guestName.split(' ')[0],

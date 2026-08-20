@@ -23,6 +23,13 @@ const environmentSchema = z.object({
   STRIPE_SECRET_KEY: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
   ORDER_CHECKOUT_RETURN_SCHEME: z.string().default('reservationapp://checkout-complete'),
+  FIREBASE_SERVICE_ACCOUNT_PATH: z.string().optional(),
+  SMTP_HOST: z.string().default('smtp.ionos.com'),
+  SMTP_PORT: z.coerce.number().int().min(1).max(65535).default(587),
+  SMTP_SECURE: z.coerce.boolean().default(false),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASSWORD: z.string().optional(),
+  EMAIL_FROM_NAME: z.string().default('Ora de Nuit'),
 });
 
 const parsed = environmentSchema.safeParse(process.env);

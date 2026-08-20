@@ -21,6 +21,7 @@ const createOrderSchema = z
     notes: z.string().trim().max(500).optional(),
     deviceId: z.string().max(255).optional(),
     os: z.enum(['android', 'ios', 'web']).optional(),
+    pushToken: z.string().max(255).optional(),
   })
   .strict();
 

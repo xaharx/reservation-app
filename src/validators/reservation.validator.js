@@ -44,6 +44,7 @@ const createReservationSchema = z
     specialRequest: z.string().trim().max(5000).optional(),
     deviceId: z.string().max(255).optional(),
     os: z.enum(["android","ios","web"]).optional(),
+    pushToken: z.string().max(255).optional(),
   })
   .strict();
 
