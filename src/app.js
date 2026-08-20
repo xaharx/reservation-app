@@ -42,7 +42,18 @@ app.post(
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, { explorer: true }));
+// helmet()'s default CSP blocks the inline script Swagger UI's HTML relies on
+// to boot itself, which renders as a blank page rather than an error. Drop
+// the CSP header for just this route rather than weakening it globally.
+app.use(
+  '/api-docs',
+  (req, res, next) => {
+    res.removeHeader('Content-Security-Policy');
+    next();
+  },
+  swaggerUi.serve,
+  swaggerUi.setup(swaggerSpec, { explorer: true }),
+);
 app.use(env.API_PREFIX, apiRouter);
 
 app.use(notFoundHandler);
