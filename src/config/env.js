@@ -8,6 +8,11 @@ const environmentSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
   API_PREFIX: z.string().startsWith('/').default('/api/v1'),
+  // Drives the Swagger "servers" entry that "Try it out" actually sends
+  // requests to. Without this it defaults to localhost, which is wrong as
+  // soon as Swagger is viewed from anywhere other than the machine running
+  // the API (e.g. viewing http://<vps-ip>:3000/api-docs from a laptop).
+  PUBLIC_API_URL: z.string().url().optional(),
   DATABASE_URL: z.string().url().optional(),
   JWT_SECRET: z.string().min(32).optional(),
   JWT_EXPIRES_IN: z.string().default('1d'),

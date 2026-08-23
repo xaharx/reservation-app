@@ -10,8 +10,10 @@ const swaggerDefinition = {
   },
   servers: [
     {
-      url: `http://localhost:${env.PORT}${env.API_PREFIX}`,
-      description: 'Local development server',
+      url: env.PUBLIC_API_URL
+        ? `${env.PUBLIC_API_URL}${env.API_PREFIX}`
+        : `http://localhost:${env.PORT}${env.API_PREFIX}`,
+      description: env.PUBLIC_API_URL ? 'Public server' : 'Local development server',
     },
   ],
   components: {
