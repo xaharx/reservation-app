@@ -4,6 +4,7 @@ const { reservationRouter, adminReservationRouter } = require('./reservation.rou
 const { cmsRouter } = require('./cms.routes');
 const { menuRouter } = require('./menu.routes');
 const { orderRouter } = require('./order.routes');
+const { deviceRouter } = require('./device.routes');
 
 const apiRouter = Router();
 
@@ -12,6 +13,7 @@ apiRouter.use('/reservations', reservationRouter);
 apiRouter.use('/admin/reservations', adminReservationRouter);
 apiRouter.use('/menu', menuRouter);
 apiRouter.use('/orders', orderRouter);
+apiRouter.use('/devices', deviceRouter);
 apiRouter.use('/', cmsRouter);
 
 // Note: POST /webhooks/stripe is registered directly on the Express app in

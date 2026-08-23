@@ -3,6 +3,7 @@ import { getApp } from '@react-native-firebase/app';
 import {
   getMessaging,
   getToken,
+  onTokenRefresh,
   requestPermission,
   setBackgroundMessageHandler,
   AuthorizationStatus,
@@ -65,4 +66,15 @@ export function registerBackgroundHandler(): void {
     // No-op: FCM "notification" payloads are displayed by the OS
     // automatically when the app is backgrounded or killed.
   });
+}
+
+/**
+ * Firebase can reissue a device's registration token at any time (not just
+ * on reinstall) — token rotation, app restore on a new device, etc. This
+ * must be handled independently of app-launch registration, or the backend
+ * keeps sending pushes to a dead token indefinitely. Returns the unsubscribe
+ * function, same contract as onMessage.
+ */
+export function registerTokenRefreshHandler(onRefresh: (token: string) => void): () => void {
+  return onTokenRefresh(getMessaging(getApp()), onRefresh);
 }

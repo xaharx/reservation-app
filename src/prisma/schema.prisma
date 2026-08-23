@@ -334,6 +334,29 @@ model AdminUser {
   @@map("admin_users")
 }
 
+model Device {
+  id                            BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  deviceId                      String    @unique @map("device_id") @db.VarChar(255)
+  os                            String    @db.VarChar(30)
+  firebaseToken                 String?   @map("firebase_token") @db.VarChar(255)
+  appVersion                    String?   @map("app_version") @db.VarChar(30)
+  osVersion                     String?   @map("os_version") @db.VarChar(30)
+  deviceModel                   String?   @map("device_model") @db.VarChar(120)
+  deviceManufacturer            String?   @map("device_manufacturer") @db.VarChar(120)
+  locale                        String?   @db.VarChar(35)
+  timezone                      String?   @db.VarChar(60)
+  notificationPermissionStatus  String?   @map("notification_permission_status") @db.VarChar(20)
+  isActive                      Boolean   @default(true) @map("is_active")
+  firstLaunchedAt               DateTime  @default(now()) @map("first_launched_at") @db.DateTime(3)
+  lastLaunchedAt                DateTime  @default(now()) @map("last_launched_at") @db.DateTime(3)
+  createdAt                     DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt                     DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+
+  @@index([os], map: "idx_devices_os")
+  @@index([isActive, lastLaunchedAt], map: "idx_devices_active_last_launch")
+  @@map("devices")
+}
+
 model AuditLog {
   id          BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
   adminUserId BigInt?   @map("admin_user_id") @db.UnsignedBigInt

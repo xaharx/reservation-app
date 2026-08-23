@@ -24,6 +24,8 @@ import SettingsScreen from './src/screens/SettingsScreen';
 import CustomDrawerContent from './src/navigation/CustomDrawerContent';
 import { colors } from './src/theme/colors';
 import { CartProvider } from './src/context/CartContext';
+import { registerDevice } from './src/device/registerDevice';
+import { registerTokenRefreshHandler } from './src/notifications/push';
 import type { RootStackParamList, MainDrawerParamList } from './src/navigation/types';
 
 const RootStack = createNativeStackNavigator<RootStackParamList>();
@@ -195,6 +197,21 @@ export default function App() {
       const title = remoteMessage.notification?.title ?? 'Ora de Nuit';
       const body = remoteMessage.notification?.body ?? '';
       Alert.alert(title, body);
+    });
+
+    return unsubscribe;
+  }, []);
+
+  useEffect(() => {
+    // Fire-and-forget: registers this installation on every launch. Must
+    // never block startup, so it's intentionally not awaited here.
+    void registerDevice();
+
+    // Firebase can reissue a token independently of app launches — this
+    // catches that case and re-registers immediately rather than waiting
+    // for the next launch to notice.
+    const unsubscribe = registerTokenRefreshHandler((token) => {
+      void registerDevice(token);
     });
 
     return unsubscribe;
