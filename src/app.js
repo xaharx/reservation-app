@@ -74,9 +74,13 @@ app.use(
 // `cd admin-panel && npm run build`; this serves the resulting dist/ folder
 // and falls back to its index.html for any /admin/* path so client-side
 // routing (React Router) works on a hard refresh/direct link too.
+// A bare '/admin/*' string trips up newer path-to-regexp releases ("Missing
+// parameter name"), and the required-name syntax that replaces it
+// ('/admin/*splat') differs across path-to-regexp/Express versions. A plain
+// RegExp path sidesteps that parsing entirely and works everywhere.
 const adminPanelDistPath = path.join(__dirname, '../admin-panel/dist');
 app.use('/admin', express.static(adminPanelDistPath));
-app.get('/admin/*', (req, res, next) => {
+app.get(/^\/admin(\/.*)?$/, (req, res, next) => {
   res.sendFile(path.join(adminPanelDistPath, 'index.html'), (err) => {
     if (err) next(err);
   });
