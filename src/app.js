@@ -18,7 +18,22 @@ const allowedOrigins =
   env.CORS_ORIGIN === '*' ? true : env.CORS_ORIGIN.split(',').map((origin) => origin.trim());
 
 app.disable('x-powered-by');
-app.use(helmet());
+app.use(
+  helmet({
+    // helmet's default CSP includes `upgrade-insecure-requests`, which tells
+    // the browser to silently rewrite the page's own subresource requests
+    // (scripts, styles, favicon) to https. This server is plain HTTP only
+    // (no TLS on this port) — with the directive on, browsers upgrade the
+    // Admin Panel's JS/CSS/favicon requests to https, get no TLS listener,
+    // and fail with ERR_SSL_PROTOCOL_ERROR instead of loading over http.
+    // Drop just that directive; add TLS in front (e.g. nginx) before
+    // re-enabling it.
+    contentSecurityPolicy: {
+      useDefaults: true,
+      directives: { upgradeInsecureRequests: null },
+    },
+  }),
+);
 app.use(cors({ origin: allowedOrigins, credentials: allowedOrigins !== true }));
 app.use(compression());
 app.use(requestLogger);
