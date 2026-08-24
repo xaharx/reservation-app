@@ -1,5 +1,4 @@
 import React, { useEffect } from 'react';
-import { Alert } from 'react-native';
 import { getApp } from '@react-native-firebase/app';
 import { getMessaging, onMessage } from '@react-native-firebase/messaging';
 import { StatusBar } from 'expo-status-bar';
@@ -26,6 +25,7 @@ import { colors } from './src/theme/colors';
 import { CartProvider } from './src/context/CartContext';
 import { registerDevice } from './src/device/registerDevice';
 import { registerTokenRefreshHandler } from './src/notifications/push';
+import { ensureNotificationChannel, showForegroundNotification } from './src/notifications/localNotification';
 import type { RootStackParamList, MainDrawerParamList } from './src/navigation/types';
 
 const RootStack = createNativeStackNavigator<RootStackParamList>();
@@ -191,12 +191,17 @@ function MainDrawer() {
 
 export default function App() {
   useEffect(() => {
+    void ensureNotificationChannel();
+
     // FCM only auto-displays notifications when the app is backgrounded or
-    // killed — while the app is open, we have to show it ourselves.
+    // killed — while the app is open, we have to show it ourselves. A real
+    // system notification (not Alert.alert) keeps this consistent with the
+    // backgrounded case and avoids colliding with the app's own dialogs
+    // (e.g. the reservation form's "Booking confirmed" alert).
     const unsubscribe = onMessage(getMessaging(getApp()), async (remoteMessage) => {
       const title = remoteMessage.notification?.title ?? 'Ora de Nuit';
       const body = remoteMessage.notification?.body ?? '';
-      Alert.alert(title, body);
+      await showForegroundNotification({ title, body, data: remoteMessage.data });
     });
 
     return unsubscribe;
