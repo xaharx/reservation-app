@@ -33,9 +33,9 @@ export function Sidebar() {
         </NavLink>
 
         <SectionLabel>Content</SectionLabel>
-        <NavLink to="/cms/home" className={navLinkClass}>
+        {/* <NavLink to="/cms/home" className={navLinkClass}>
           Home
-        </NavLink>
+        </NavLink> */}
         <NavLink to="/cms/menu" className={navLinkClass}>
           Menu
         </NavLink>
