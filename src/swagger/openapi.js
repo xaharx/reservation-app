@@ -17,6 +17,14 @@ const swaggerDefinition = {
     },
   ],
   components: {
+    securitySchemes: {
+      bearerAuth: {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        description: 'Obtain a token from POST /admin/auth/login.',
+      },
+    },
     schemas: {
       HealthResponse: {
         type: 'object',

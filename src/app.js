@@ -54,6 +54,20 @@ app.use(
   swaggerUi.serve,
   swaggerUi.setup(swaggerSpec, { explorer: true }),
 );
+// Uploaded gallery images, served outside API_PREFIX so the stored imageUrl
+// stays stable regardless of API versioning. helmet()'s default
+// Cross-Origin-Resource-Policy: same-origin would otherwise let browsers
+// (the future Admin Panel, on a different origin) silently fail to render
+// these — same idea as the Swagger CSP override above.
+app.use(
+  '/uploads',
+  (req, res, next) => {
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    next();
+  },
+  express.static(env.uploadPath),
+);
+
 app.use(env.API_PREFIX, apiRouter);
 
 app.use(notFoundHandler);

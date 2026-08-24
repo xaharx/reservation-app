@@ -124,6 +124,10 @@ const listReservationsQuerySchema = z
       .string()
       .refine(isCalendarDate, 'Reservation date must be a valid YYYY-MM-DD date.')
       .optional(),
+    // Matched against guest name, email, phone, and confirmation code.
+    search: z.string().trim().min(1).max(191).optional(),
+    sortBy: z.enum(['reservationDate', 'createdAt', 'guestName']).default('reservationDate'),
+    sortDir: z.enum(['asc', 'desc']).default('asc'),
   })
   .strict();
 

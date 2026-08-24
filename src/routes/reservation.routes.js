@@ -150,6 +150,7 @@ const adminReservationRouter = Router();
  *   get:
  *     tags: [Reservations]
  *     summary: List reservations for administration
+ *     security: [{ bearerAuth: [] }]
  *     parameters:
  *       - in: query
  *         name: page
@@ -163,8 +164,19 @@ const adminReservationRouter = Router();
  *       - in: query
  *         name: reservationDate
  *         schema: { type: string, format: date }
+ *       - in: query
+ *         name: search
+ *         description: Matched against guest name, email, phone, and confirmation code.
+ *         schema: { type: string, maxLength: 191, example: aisha }
+ *       - in: query
+ *         name: sortBy
+ *         schema: { type: string, enum: [reservationDate, createdAt, guestName], default: reservationDate }
+ *       - in: query
+ *         name: sortDir
+ *         schema: { type: string, enum: [asc, desc], default: asc }
  *     responses:
  *       200: { description: Reservations retrieved successfully. }
+ *       401: { description: 'Authentication required, or session expired/invalid.' }
  */
 adminReservationRouter.get(
   '/',
@@ -174,10 +186,47 @@ adminReservationRouter.get(
 
 /**
  * @openapi
+ * /admin/reservations/stats:
+ *   get:
+ *     tags: [Reservations]
+ *     summary: Get reservation counts for the admin dashboard
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200:
+ *         description: Reservation statistics retrieved successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean, example: true }
+ *                 message: { type: string }
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     total: { type: integer, example: 128 }
+ *                     byStatus:
+ *                       type: object
+ *                       properties:
+ *                         PENDING: { type: integer }
+ *                         CONFIRMED: { type: integer }
+ *                         SEATED: { type: integer }
+ *                         COMPLETED: { type: integer }
+ *                         CANCELLED: { type: integer }
+ *                         NO_SHOW: { type: integer }
+ *                     today: { type: integer, example: 6 }
+ *                     upcoming: { type: integer, example: 41 }
+ *       401: { description: 'Authentication required, or session expired/invalid.' }
+ */
+adminReservationRouter.get('/stats', reservationController.stats);
+
+/**
+ * @openapi
  * /admin/reservations/{id}/status:
  *   patch:
  *     tags: [Reservations]
  *     summary: Update a reservation lifecycle status
+ *     security: [{ bearerAuth: [] }]
  *     parameters:
  *       - in: path
  *         name: id
@@ -195,6 +244,7 @@ adminReservationRouter.get(
  *               cancellationNote: { type: string, maxLength: 500 }
  *     responses:
  *       200: { description: Reservation status updated successfully. }
+ *       401: { description: 'Authentication required, or session expired/invalid.' }
  *       404: { description: Reservation not found. }
  *       409: { description: Invalid lifecycle transition. }
  */

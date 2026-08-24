@@ -44,4 +44,9 @@ class CmsService {
   }
 }
 
-module.exports = { CmsService };
+// Shared singleton so AdminCmsService can invalidate the exact cache
+// instance the public read endpoints use — without this, an admin edit
+// wouldn't be visible to the mobile app until the TTL expired.
+const cmsService = new CmsService();
+
+module.exports = { CmsService, cmsService };

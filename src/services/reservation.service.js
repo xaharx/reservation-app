@@ -127,12 +127,15 @@ class ReservationService {
   }
 
   async listReservations(query) {
-    const { page, limit, status, reservationDate } = query;
+    const { page, limit, status, reservationDate, search, sortBy, sortDir } = query;
     const result = await this.reservationRepository.findMany({
       skip: (page - 1) * limit,
       take: limit,
       status,
       reservationDate: reservationDate ? new Date(`${reservationDate}T00:00:00.000Z`) : undefined,
+      search,
+      sortBy,
+      sortDir,
     });
 
     return {
@@ -149,6 +152,40 @@ class ReservationService {
         totalPages: Math.ceil(result.total / limit),
       },
     };
+  }
+
+  /**
+   * Dashboard stats, computed from real counts only — no invented figures.
+   * "Today" and "upcoming" are both relative to reservationDate, using the
+   * server's own clock (injected so this stays testable).
+   */
+  async getReservationStats() {
+    const now = this.clock();
+    const startOfToday = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+    );
+    const startOfTomorrow = new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000);
+
+    const [statusRows, total, today, upcoming] = await Promise.all([
+      this.reservationRepository.countByStatus(),
+      this.reservationRepository.countByDateRange({}),
+      this.reservationRepository.countByDateRange({ from: startOfToday, to: startOfTomorrow }),
+      this.reservationRepository.countByDateRange({ from: startOfTomorrow }),
+    ]);
+
+    const byStatus = {
+      PENDING: 0,
+      CONFIRMED: 0,
+      SEATED: 0,
+      COMPLETED: 0,
+      CANCELLED: 0,
+      NO_SHOW: 0,
+    };
+    for (const row of statusRows) {
+      byStatus[row.status] = row._count._all;
+    }
+
+    return { total, byStatus, today, upcoming };
   }
 
   async updateReservationStatus(id, input) {

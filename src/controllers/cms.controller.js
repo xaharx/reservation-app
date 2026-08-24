@@ -1,8 +1,8 @@
 const { HTTP_STATUS } = require('../constants/http-status');
-const { CmsService } = require('../services/cms.service');
+const { cmsService: defaultCmsService } = require('../services/cms.service');
 const { asyncHandler } = require('../utils/async-handler');
 
-function createCmsController(cmsService = new CmsService()) {
+function createCmsController(cmsService = defaultCmsService) {
   function createReadHandler(message, getData) {
     return asyncHandler(async (_req, res) => {
       const data = await getData();

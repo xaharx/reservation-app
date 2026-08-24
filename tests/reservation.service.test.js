@@ -161,6 +161,66 @@ test('ReservationService.cancelReservation refuses to cancel a reservation that 
   );
 });
 
+test('ReservationService.listReservations passes search/sort through to the repository', async () => {
+  let capturedArgs;
+  const repository = {
+    findMany: async (args) => {
+      capturedArgs = args;
+      return { reservations: [], total: 0 };
+    },
+  };
+  const service = new ReservationService({ reservationRepository: repository });
+
+  await service.listReservations({
+    page: 2,
+    limit: 10,
+    status: 'CONFIRMED',
+    search: 'aisha',
+    sortBy: 'createdAt',
+    sortDir: 'desc',
+  });
+
+  assert.equal(capturedArgs.skip, 10);
+  assert.equal(capturedArgs.take, 10);
+  assert.equal(capturedArgs.status, 'CONFIRMED');
+  assert.equal(capturedArgs.search, 'aisha');
+  assert.equal(capturedArgs.sortBy, 'createdAt');
+  assert.equal(capturedArgs.sortDir, 'desc');
+});
+
+test('ReservationService.getReservationStats aggregates status counts and today/upcoming from real data only', async () => {
+  const repository = {
+    countByStatus: async () => [
+      { status: 'PENDING', _count: { _all: 3 } },
+      { status: 'CONFIRMED', _count: { _all: 5 } },
+    ],
+    countByDateRange: async ({ from, to } = {}) => {
+      if (!from && !to) return 20; // total
+      if (from && to) return 2; // today
+      if (from && !to) return 7; // upcoming
+      return 0;
+    },
+  };
+  const service = new ReservationService({
+    reservationRepository: repository,
+    clock: () => new Date('2026-08-24T15:00:00.000Z'),
+  });
+
+  const stats = await service.getReservationStats();
+
+  assert.equal(stats.total, 20);
+  assert.equal(stats.today, 2);
+  assert.equal(stats.upcoming, 7);
+  assert.equal(stats.byStatus.PENDING, 3);
+  assert.equal(stats.byStatus.CONFIRMED, 5);
+  // Statuses with no rows from the DB must still be present, at 0 — not
+  // omitted, so the dashboard can render every status without guarding.
+  assert.equal(stats.byStatus.SEATED, 0);
+  assert.equal(stats.byStatus.COMPLETED, 0);
+  assert.equal(stats.byStatus.CANCELLED, 0);
+  assert.equal(stats.byStatus.NO_SHOW, 0);
+});
+
 test('ReservationService allows only valid lifecycle transitions', async () => {
   let updatePayload;
   const repository = {

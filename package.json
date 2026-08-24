@@ -19,16 +19,19 @@
     "prisma:migrate": "prisma migrate dev --schema=src/prisma/schema.prisma",
     "prisma:deploy": "prisma migrate deploy --schema=src/prisma/schema.prisma",
     "prisma:studio": "prisma studio --schema=src/prisma/schema.prisma",
-    "seed:menu": "node scripts/seed-menu.js"
+    "seed:menu": "node scripts/seed-menu.js",
+    "seed:admin": "node scripts/seed-admin.js"
   },
   "dependencies": {
     "@prisma/client": "^6.16.0",
+    "bcryptjs": "^2.4.3",
     "compression": "^1.8.1",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "firebase-admin": "^13.5.0",
     "helmet": "^8.3.0",
+    "jsonwebtoken": "^9.0.2",
     "morgan": "^1.11.0",
     "multer": "^2.2.0",
     "nodemailer": "^9.0.5",

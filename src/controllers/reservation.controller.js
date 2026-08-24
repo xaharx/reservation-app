@@ -49,6 +49,14 @@ function createReservationController(reservationService = new ReservationService
         meta: result.meta,
       });
     }),
+    stats: asyncHandler(async (req, res) => {
+      const stats = await reservationService.getReservationStats();
+      res.status(HTTP_STATUS.OK).json({
+        success: true,
+        message: 'Reservation statistics retrieved successfully.',
+        data: stats,
+      });
+    }),
     updateStatus: asyncHandler(async (req, res) => {
       const reservation = await reservationService.updateReservationStatus(req.params.id, req.body);
       res.status(HTTP_STATUS.OK).json({
