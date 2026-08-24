@@ -42,18 +42,21 @@ export function Sidebar() {
         <NavLink to="/cms/about" className={navLinkClass}>
           About
         </NavLink>
-        <NavLink to="/cms/gallery" className={navLinkClass}>
+        {/* Temporarily hidden from nav per request — pages/routes/API are
+            untouched, so this is a one-line revert per link (just
+            uncomment) whenever they should come back. */}
+        {/* <NavLink to="/cms/gallery" className={navLinkClass}>
           Gallery
-        </NavLink>
-        <NavLink to="/cms/contact" className={navLinkClass}>
+        </NavLink> */}
+        {/* <NavLink to="/cms/contact" className={navLinkClass}>
           Contact
-        </NavLink>
-        <NavLink to="/cms/social-media" className={navLinkClass}>
+        </NavLink> */}
+        {/* <NavLink to="/cms/social-media" className={navLinkClass}>
           Social Media
-        </NavLink>
-        <NavLink to="/cms/settings" className={navLinkClass}>
+        </NavLink> */}
+        {/* <NavLink to="/cms/settings" className={navLinkClass}>
           Settings
-        </NavLink>
+        </NavLink> */}
 
         <SectionLabel>Account</SectionLabel>
         <NavLink to="/profile" className={navLinkClass}>
