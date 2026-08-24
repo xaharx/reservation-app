@@ -68,16 +68,6 @@ function MainDrawer() {
       }}
     >
       <Drawer.Screen
-        name="Menu"
-        component={MenuScreen}
-        options={{
-          title: 'Menu',
-          drawerIcon: ({ color, size }) => (
-            <Ionicons name="restaurant-outline" color={color} size={size} />
-          ),
-        }}
-      />
-      <Drawer.Screen
         name="Reservation"
         component={ReservationFormScreen}
         options={{
@@ -95,6 +85,34 @@ function MainDrawer() {
           drawerIcon: ({ color, size }) => (
             <Ionicons name="search-outline" color={color} size={size} />
           ),
+        }}
+      />
+      <Drawer.Screen
+        name="Menu"
+        component={MenuScreen}
+        options={{
+          title: 'Menu',
+          drawerIcon: ({ color, size }) => (
+            <Ionicons name="restaurant-outline" color={color} size={size} />
+          ),
+        }}
+      />
+      <Drawer.Screen
+        name="Cart"
+        component={CartScreen}
+        options={{
+          title: 'Cart',
+          drawerIcon: ({ color, size }) => (
+            <Ionicons name="cart-outline" color={color} size={size} />
+          ),
+        }}
+      />
+      <Drawer.Screen
+        name="OrderHistory"
+        component={OrderHistoryScreen}
+        options={{
+          title: 'Order History',
+          drawerIcon: ({ color, size }) => <Ionicons name="time-outline" color={color} size={size} />,
         }}
       />
       <Drawer.Screen
@@ -129,24 +147,6 @@ function MainDrawer() {
           ),
           // Hidden from the drawer list for now — screen and navigation still work.
           drawerItemStyle: { display: 'none' },
-        }}
-      />
-      <Drawer.Screen
-        name="Cart"
-        component={CartScreen}
-        options={{
-          title: 'Cart',
-          drawerIcon: ({ color, size }) => (
-            <Ionicons name="cart-outline" color={color} size={size} />
-          ),
-        }}
-      />
-      <Drawer.Screen
-        name="OrderHistory"
-        component={OrderHistoryScreen}
-        options={{
-          title: 'Order History',
-          drawerIcon: ({ color, size }) => <Ionicons name="time-outline" color={color} size={size} />,
         }}
       />
       <Drawer.Screen
