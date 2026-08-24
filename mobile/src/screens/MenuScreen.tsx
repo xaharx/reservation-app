@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   ActivityIndicator,
+  Image,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -72,6 +73,13 @@ export default function MenuScreen({ navigation }: Props) {
                 const quantity = quantityFor(item.id);
                 return (
                   <View key={item.id} style={styles.itemCard}>
+                    {!!item.imageUrl && (
+                      <Image
+                        source={{ uri: item.imageUrl }}
+                        style={styles.itemImage}
+                        resizeMode="cover"
+                      />
+                    )}
                     <View style={styles.itemInfo}>
                       <Text style={styles.itemName}>{item.name}</Text>
                       {!!item.description && (
@@ -169,6 +177,13 @@ const styles = StyleSheet.create({
     borderColor: colors.cardBorder,
     padding: 14,
     marginBottom: 10,
+  },
+  itemImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    marginRight: 12,
+    backgroundColor: colors.inputBackground,
   },
   itemInfo: {
     flex: 1,

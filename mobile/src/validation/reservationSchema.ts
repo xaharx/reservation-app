@@ -3,12 +3,17 @@ import { z } from 'zod';
 /**
  * Mirrors the rules enforced server-side in
  * ReservationApp/src/validators/reservation.validator.js (createReservationSchema),
- * so the mobile app rejects bad input before it ever reaches the API.
+ * so the mobile app rejects bad input before it ever reaches the API. The
+ * phone pattern is intentionally stricter than the server's (which accepts
+ * any country's number) — this app only takes US reservations for now.
  */
 
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
-const PHONE_PATTERN = /^\+?[1-9]\d{6,31}$/;
+// US phone numbers: optional +1/1 country code, then exactly 10 digits
+// (area code + subscriber number). Formatting characters aren't accepted
+// since the field is a plain digit-entry TextInput (keyboardType="phone-pad").
+const PHONE_PATTERN = /^(\+?1)?\d{10}$/;
 
 function isCalendarDate(value: string): boolean {
   if (!ISO_DATE_PATTERN.test(value)) {
@@ -58,7 +63,7 @@ export const reservationFormSchema = z.object({
   phone: z
     .string()
     .trim()
-    .regex(PHONE_PATTERN, 'Enter a valid phone number, e.g. +923001234567.'),
+    .regex(PHONE_PATTERN, 'Enter a valid US phone number, e.g. +15551234567.'),
   reservationDate: z
     .string()
     .min(1, 'Please select a date.')

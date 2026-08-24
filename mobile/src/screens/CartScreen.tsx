@@ -25,10 +25,12 @@ const guestDetailsSchema = z.object({
   firstName: z.string().trim().min(1, 'First name is required.').max(80),
   lastName: z.string().trim().min(1, 'Last name is required.').max(80),
   email: z.string().trim().toLowerCase().email('Enter a valid email address.').max(191),
+  // US phone numbers: optional +1/1 country code, then exactly 10 digits —
+  // same pattern as mobile/src/validation/reservationSchema.ts.
   phone: z
     .string()
     .trim()
-    .regex(/^\+?[1-9]\d{6,31}$/, 'Enter a valid phone number, e.g. +923001234567.'),
+    .regex(/^(\+?1)?\d{10}$/, 'Enter a valid US phone number, e.g. +15551234567.'),
 });
 
 type FieldErrors = Partial<Record<keyof z.infer<typeof guestDetailsSchema>, string>>;

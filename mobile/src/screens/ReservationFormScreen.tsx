@@ -157,10 +157,6 @@ export default function ReservationFormScreen(_props: Props) {
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.logoCircleSmall}>
-          <Text style={styles.logoTextSmall}>ON</Text>
-        </View>
-
         <View style={styles.card}>
           <Text style={styles.heading}>Reservation</Text>
           <Text style={styles.subheading}>Book your table with us</Text>
@@ -375,22 +371,6 @@ const styles = StyleSheet.create({
     padding: 24,
     paddingTop: 48,
     alignItems: 'center',
-  },
-  logoCircleSmall: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    borderWidth: 2,
-    borderColor: colors.gold,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  logoTextSmall: {
-    color: colors.gold,
-    fontSize: 18,
-    fontWeight: '700',
-    letterSpacing: 1,
   },
   card: {
     width: '100%',
