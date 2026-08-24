@@ -30,7 +30,16 @@ app.use(
     // re-enabling it.
     contentSecurityPolicy: {
       useDefaults: true,
-      directives: { upgradeInsecureRequests: null },
+      directives: {
+        upgradeInsecureRequests: null,
+        // Menu/gallery/CMS content can reference externally-hosted images
+        // (stock photos, links pasted straight from a Google Images
+        // search, etc.), not just our own /uploads files. Helmet's default
+        // img-src is 'self' data: only, which silently blocks all of
+        // those. Allow any https: source, same as font-src/style-src
+        // already do by default.
+        imgSrc: ["'self'", 'data:', 'https:'],
+      },
     },
   }),
 );
