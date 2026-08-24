@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { getApp } from '@react-native-firebase/app';
 import { getMessaging, onMessage } from '@react-native-firebase/messaging';
+import * as ExpoSplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { NavigationContainer, type LinkingOptions } from '@react-navigation/native';
@@ -30,6 +31,15 @@ import type { RootStackParamList, MainDrawerParamList } from './src/navigation/t
 
 const RootStack = createNativeStackNavigator<RootStackParamList>();
 const Drawer = createDrawerNavigator<MainDrawerParamList>();
+
+// Keep the native launch screen (cream background + logomark, configured via
+// the expo-splash-screen plugin in app.json) visible past the default
+// auto-hide point. SplashScreen.tsx explicitly hides it as soon as it mounts,
+// so the handoff from native splash to the JS splash screen is seamless
+// instead of showing a blank white frame in between.
+ExpoSplashScreen.preventAutoHideAsync().catch(() => {
+  // Safe to ignore — happens if this races with a hide call on fast reloads.
+});
 
 // Stripe Checkout redirects here after payment (see order.service.js
 // successUrl/cancelUrl). Requires the "reservationapp" scheme registered in

@@ -38,7 +38,16 @@
         }
       ],
       "@react-native-firebase/app",
-      "expo-notifications"
+      "expo-notifications",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/on-logomark.png",
+          "imageWidth": 150,
+          "resizeMode": "contain",
+          "backgroundColor": "#F9F0E9"
+        }
+      ]
     ]
   }
 }

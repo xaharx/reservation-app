@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
+import * as ExpoSplashScreen from 'expo-splash-screen';
 import type { RootStackScreenProps } from '../navigation/types';
 import { colors } from '../theme/colors';
 
@@ -10,6 +11,12 @@ const LOGOMARK_ASPECT_RATIO = 523 / 323;
 
 export default function SplashScreen({ navigation }: Props) {
   useEffect(() => {
+    // This screen renders the same cream background + logomark as the native
+    // launch screen (see the expo-splash-screen plugin config in app.json),
+    // so hiding the native one the moment this mounts is an invisible
+    // handoff rather than a jarring cut.
+    ExpoSplashScreen.hideAsync().catch(() => {});
+
     const timer = setTimeout(() => {
       navigation.replace('Main');
     }, SPLASH_DURATION_MS);
