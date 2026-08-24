@@ -40,4 +40,6 @@ class MenuService {
   }
 }
 
-module.exports = { MenuService };
+const menuService = new MenuService();
+
+module.exports = { MenuService, menuService };

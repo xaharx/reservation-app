@@ -7,6 +7,7 @@ const { orderRouter, adminOrderRouter } = require('./order.routes');
 const { deviceRouter } = require('./device.routes');
 const { authRouter } = require('./auth.routes');
 const { adminCmsRouter } = require('./admin-cms.routes');
+const { adminMenuRouter } = require('./admin-menu.routes');
 const { authenticate } = require('../middlewares/authenticate.middleware');
 
 const apiRouter = Router();
@@ -18,6 +19,7 @@ apiRouter.use('/admin/auth', authRouter);
 // these were previously unauthenticated, callable by anyone who knew the URL.
 apiRouter.use('/admin/reservations', authenticate, adminReservationRouter);
 apiRouter.use('/menu', menuRouter);
+apiRouter.use('/admin/menu', authenticate, adminMenuRouter);
 apiRouter.use('/orders', orderRouter);
 apiRouter.use('/admin/orders', authenticate, adminOrderRouter);
 apiRouter.use('/devices', deviceRouter);

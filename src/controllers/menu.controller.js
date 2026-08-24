@@ -1,8 +1,8 @@
 const { HTTP_STATUS } = require('../constants/http-status');
-const { MenuService } = require('../services/menu.service');
+const { menuService: defaultMenuService } = require('../services/menu.service');
 const { asyncHandler } = require('../utils/async-handler');
 
-function createMenuController(menuService = new MenuService()) {
+function createMenuController(menuService = defaultMenuService) {
   return {
     getMenu: asyncHandler(async (_req, res) => {
       const menu = await menuService.getMenu();

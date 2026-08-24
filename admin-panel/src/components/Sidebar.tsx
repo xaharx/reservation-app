@@ -36,6 +36,9 @@ export function Sidebar() {
         <NavLink to="/cms/home" className={navLinkClass}>
           Home
         </NavLink>
+        <NavLink to="/cms/menu" className={navLinkClass}>
+          Menu
+        </NavLink>
         <NavLink to="/cms/about" className={navLinkClass}>
           About
         </NavLink>

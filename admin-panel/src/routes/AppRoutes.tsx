@@ -9,6 +9,7 @@ import { OrderDetailsPage } from '../pages/OrderDetailsPage';
 import { ProfilePage } from '../pages/ProfilePage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 import { HomePage } from '../pages/cms/HomePage';
+import { MenuPage } from '../pages/cms/MenuPage';
 import { AboutPage } from '../pages/cms/AboutPage';
 import { GalleryPage } from '../pages/cms/GalleryPage';
 import { ContactPage } from '../pages/cms/ContactPage';
@@ -27,6 +28,7 @@ export function AppRoutes() {
         <Route path="/orders" element={<OrdersPage />} />
         <Route path="/orders/:id" element={<OrderDetailsPage />} />
         <Route path="/cms/home" element={<HomePage />} />
+        <Route path="/cms/menu" element={<MenuPage />} />
         <Route path="/cms/about" element={<AboutPage />} />
         <Route path="/cms/gallery" element={<GalleryPage />} />
         <Route path="/cms/contact" element={<ContactPage />} />
