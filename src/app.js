@@ -1,3 +1,4 @@
+const path = require('path');
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -67,6 +68,20 @@ app.use(
   },
   express.static(env.uploadPath),
 );
+
+// Admin Panel (React/Vite SPA), served under /admin so it shares the API's
+// origin — no CORS_ORIGIN entry needed for it. Build it first with
+// `cd admin-panel && npm run build`; this serves the resulting dist/ folder
+// and falls back to its index.html for any /admin/* path so client-side
+// routing (React Router) works on a hard refresh/direct link too.
+const adminPanelDistPath = path.join(__dirname, '../admin-panel/dist');
+app.use('/admin', express.static(adminPanelDistPath));
+app.get('/admin/*', (req, res, next) => {
+  res.sendFile(path.join(adminPanelDistPath, 'index.html'), (err) => {
+    if (err) next(err);
+  });
+});
+app.get('/', (req, res) => res.redirect('/admin/'));
 
 app.use(env.API_PREFIX, apiRouter);
 

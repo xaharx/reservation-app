@@ -5,7 +5,7 @@ import { AppRoutes } from './routes/AppRoutes';
 
 function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={import.meta.env.PROD ? '/admin' : '/'}>
       <ToastProvider>
         <AuthProvider>
           <AppRoutes />
