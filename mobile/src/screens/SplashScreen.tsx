@@ -7,7 +7,6 @@ type Props = RootStackScreenProps<'Splash'>;
 
 const SPLASH_DURATION_MS = 3000;
 const LOGOMARK_ASPECT_RATIO = 523 / 323;
-const ILLUSTRATION_ASPECT_RATIO = 654 / 672;
 
 export default function SplashScreen({ navigation }: Props) {
   useEffect(() => {
@@ -35,12 +34,6 @@ export default function SplashScreen({ navigation }: Props) {
           <View style={styles.dividerLine} />
         </View>
       </View>
-
-      <Image
-        source={require('../../assets/splash-illustration.png')}
-        style={styles.illustration}
-        resizeMode="cover"
-      />
     </View>
   );
 }
@@ -89,12 +82,5 @@ const styles = StyleSheet.create({
     backgroundColor: colors.gold,
     marginHorizontal: 8,
     transform: [{ rotate: '45deg' }],
-  },
-  illustration: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    width: '100%',
-    aspectRatio: ILLUSTRATION_ASPECT_RATIO,
   },
 });
