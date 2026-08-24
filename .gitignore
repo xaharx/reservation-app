@@ -2,6 +2,11 @@ node_modules/
 .env
 .env.*
 !.env.example
+# Safe to commit: no secrets, just the relative API path the production
+# build should use (see admin-panel/vite.config.ts / app.js's /admin route).
+# Committing it means `npm run build` alone always produces the right
+# build, without anyone having to remember to pass VITE_API_BASE_URL inline.
+!admin-panel/.env.production
 firebase-service-account*.json
 coverage/
 src/logs/*.log
