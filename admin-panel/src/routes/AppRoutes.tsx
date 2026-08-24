@@ -4,6 +4,8 @@ import { LoginPage } from '../pages/LoginPage';
 import { DashboardPage } from '../pages/DashboardPage';
 import { ReservationsPage } from '../pages/ReservationsPage';
 import { ReservationDetailsPage } from '../pages/ReservationDetailsPage';
+import { OrdersPage } from '../pages/OrdersPage';
+import { OrderDetailsPage } from '../pages/OrderDetailsPage';
 import { ProfilePage } from '../pages/ProfilePage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 import { HomePage } from '../pages/cms/HomePage';
@@ -22,6 +24,8 @@ export function AppRoutes() {
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/reservations" element={<ReservationsPage />} />
         <Route path="/reservations/:id" element={<ReservationDetailsPage />} />
+        <Route path="/orders" element={<OrdersPage />} />
+        <Route path="/orders/:id" element={<OrderDetailsPage />} />
         <Route path="/cms/home" element={<HomePage />} />
         <Route path="/cms/about" element={<AboutPage />} />
         <Route path="/cms/gallery" element={<GalleryPage />} />

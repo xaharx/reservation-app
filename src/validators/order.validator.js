@@ -59,9 +59,41 @@ const cancelOrderSchema = z
   })
   .strict();
 
+const ORDER_STATUS_VALUES = ['PENDING_PAYMENT', 'PAID', 'PREPARING', 'READY', 'COMPLETED', 'CANCELLED'];
+
+const listOrdersQuerySchema = z
+  .object({
+    page: z.coerce.number().int().min(1).default(1),
+    limit: z.coerce.number().int().min(1).max(100).default(20),
+    status: z.enum(ORDER_STATUS_VALUES).optional(),
+    // Matched against guest name, email, phone, and confirmation code.
+    search: z.string().trim().min(1).max(191).optional(),
+    sortBy: z.enum(['createdAt', 'guestName']).default('createdAt'),
+    sortDir: z.enum(['asc', 'desc']).default('desc'),
+  })
+  .strict();
+
+const updateOrderStatusSchema = z
+  .object({
+    status: z.enum(ORDER_STATUS_VALUES),
+    cancellationNote: z.string().trim().min(1).max(500).optional(),
+  })
+  .strict()
+  .superRefine((value, context) => {
+    if (value.status === 'CANCELLED' && !value.cancellationNote) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['cancellationNote'],
+        message: 'Cancellation note is required when cancelling an order.',
+      });
+    }
+  });
+
 module.exports = {
   createOrderSchema,
   lookupOrderSchema,
   orderCancellationParamsSchema,
   cancelOrderSchema,
+  listOrdersQuerySchema,
+  updateOrderStatusSchema,
 };

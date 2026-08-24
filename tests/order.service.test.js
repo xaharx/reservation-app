@@ -301,3 +301,160 @@ test('OrderService.handleCheckoutCompleted is a no-op for an already-paid order'
 
   assert.equal(updateCalled, false);
 });
+
+test('OrderService.getOrderById returns the order for a valid id', async () => {
+  const service = new OrderService({
+    orderRepository: {
+      findById: async (id) => {
+        assert.equal(id, 1n);
+        return makeOrder();
+      },
+    },
+  });
+
+  const result = await service.getOrderById('1');
+
+  assert.equal(result.confirmationCode, 'OD-TESTCODE01');
+});
+
+test('OrderService.getOrderById rejects an unknown id', async () => {
+  const service = new OrderService({
+    orderRepository: { findById: async () => null },
+  });
+
+  await assert.rejects(
+    () => service.getOrderById('999'),
+    (error) => error.statusCode === 404,
+  );
+});
+
+test('OrderService.listOrders passes search/sort through to the repository', async () => {
+  let capturedArgs;
+  const service = new OrderService({
+    orderRepository: {
+      findMany: async (args) => {
+        capturedArgs = args;
+        return { orders: [], total: 0 };
+      },
+    },
+  });
+
+  await service.listOrders({
+    page: 2,
+    limit: 10,
+    status: 'PAID',
+    search: 'aisha',
+    sortBy: 'guestName',
+    sortDir: 'asc',
+  });
+
+  assert.equal(capturedArgs.skip, 10);
+  assert.equal(capturedArgs.take, 10);
+  assert.equal(capturedArgs.status, 'PAID');
+  assert.equal(capturedArgs.search, 'aisha');
+  assert.equal(capturedArgs.sortBy, 'guestName');
+  assert.equal(capturedArgs.sortDir, 'asc');
+});
+
+test('OrderService.getOrderStats aggregates status counts, today, and paid-only revenue from real data', async () => {
+  const service = new OrderService({
+    orderRepository: {
+      countByStatus: async () => [
+        { status: 'PAID', _count: { _all: 4 } },
+        { status: 'COMPLETED', _count: { _all: 9 } },
+      ],
+      countByDateRange: async ({ from, to } = {}) => {
+        if (from && to) return 3; // today
+        return 0;
+      },
+      sumPaidRevenueCents: async () => 45600,
+    },
+    clock: () => new Date('2026-08-24T15:00:00.000Z'),
+  });
+
+  const stats = await service.getOrderStats();
+
+  assert.equal(stats.today, 3);
+  assert.equal(stats.revenueCents, 45600);
+  assert.equal(stats.byStatus.PAID, 4);
+  assert.equal(stats.byStatus.COMPLETED, 9);
+  // Statuses with no rows from the DB must still be present, at 0 — not
+  // omitted, so the dashboard can render every status without guarding.
+  assert.equal(stats.byStatus.PENDING_PAYMENT, 0);
+  assert.equal(stats.byStatus.PREPARING, 0);
+  assert.equal(stats.byStatus.READY, 0);
+  assert.equal(stats.byStatus.CANCELLED, 0);
+});
+
+test('OrderService.updateOrderStatus allows a valid staff transition (PAID -> PREPARING) without touching payment', async () => {
+  let updatePayload;
+  const service = new OrderService({
+    orderRepository: {
+      findById: async () => makeOrder({ status: 'PAID', paymentStatus: 'PAID' }),
+      updateStatus: async (_id, data) => {
+        updatePayload = data;
+        return makeOrder({ ...data });
+      },
+    },
+  });
+
+  const result = await service.updateOrderStatus('1', { status: 'PREPARING' });
+
+  assert.deepEqual(updatePayload, { status: 'PREPARING' });
+  assert.equal(result.status, 'PREPARING');
+});
+
+test('OrderService.updateOrderStatus rejects an invalid lifecycle transition', async () => {
+  const service = new OrderService({
+    orderRepository: { findById: async () => makeOrder({ status: 'PENDING_PAYMENT' }) },
+  });
+
+  await assert.rejects(
+    () => service.updateOrderStatus('1', { status: 'COMPLETED' }),
+    (error) => error.statusCode === 409,
+  );
+});
+
+test('OrderService.updateOrderStatus rejects an unknown order id', async () => {
+  const service = new OrderService({
+    orderRepository: { findById: async () => null },
+  });
+
+  await assert.rejects(
+    () => service.updateOrderStatus('999', { status: 'PREPARING' }),
+    (error) => error.statusCode === 404,
+  );
+});
+
+test('OrderService.updateOrderStatus cancelling a paid order refunds via Stripe, same as guest self-cancel', async () => {
+  let refundArgs;
+  let updatePayload;
+  const service = new OrderService({
+    orderRepository: {
+      findById: async () =>
+        makeOrder({ status: 'PREPARING', paymentStatus: 'PAID', paymentReference: 'pi_test_456' }),
+      updateStatus: async (_id, data) => {
+        updatePayload = data;
+        return makeOrder({ ...data });
+      },
+    },
+    stripeGateway: {
+      refundPayment: async (args) => {
+        refundArgs = args;
+        return {};
+      },
+    },
+    clock: () => new Date('2026-07-30T09:00:00.000Z'),
+  });
+
+  const result = await service.updateOrderStatus('1', {
+    status: 'CANCELLED',
+    cancellationNote: 'Kitchen ran out of stock',
+  });
+
+  assert.equal(refundArgs.paymentIntentId, 'pi_test_456');
+  assert.equal(updatePayload.paymentStatus, 'REFUNDED');
+  assert.equal(updatePayload.cancellationNote, 'Kitchen ran out of stock');
+  assert.equal(result.status, 'CANCELLED');
+  assert.equal(result.paymentStatus, 'REFUNDED');
+});

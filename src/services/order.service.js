@@ -12,6 +12,18 @@ const { ApiError } = require('../utils/api-error');
 // or COMPLETED, cancelling (and refunding) no longer makes sense.
 const CANCELLABLE_STATUSES = new Set(['PENDING_PAYMENT', 'PAID', 'PREPARING']);
 
+// Staff-driven lifecycle, set via PATCH /admin/orders/:id/status. PAID itself
+// is only ever set by the Stripe webhook (handleCheckoutCompleted), never by
+// staff, so it isn't a target of any transition here.
+const ORDER_STATUS_TRANSITIONS = Object.freeze({
+  PENDING_PAYMENT: ['CANCELLED'],
+  PAID: ['PREPARING', 'CANCELLED'],
+  PREPARING: ['READY', 'CANCELLED'],
+  READY: ['COMPLETED'],
+  COMPLETED: [],
+  CANCELLED: [],
+});
+
 function createConfirmationCode() {
   return `OD-${randomUUID().replace(/-/g, '').slice(0, 10).toUpperCase()}`;
 }
@@ -204,6 +216,111 @@ class OrderService {
     return toOrderResponse(updatedOrder);
   }
 
+  async getOrderById(id) {
+    const order = await this.orderRepository.findById(BigInt(id));
+    if (!order) {
+      throw new ApiError(HTTP_STATUS.NOT_FOUND, 'Order not found.');
+    }
+
+    return toOrderResponse(order);
+  }
+
+  async listOrders(query) {
+    const { page, limit, status, search, sortBy, sortDir } = query;
+    const result = await this.orderRepository.findMany({
+      skip: (page - 1) * limit,
+      take: limit,
+      status,
+      search,
+      sortBy,
+      sortDir,
+    });
+
+    return {
+      data: result.orders.map((order) => toOrderResponse(order)),
+      meta: {
+        page,
+        limit,
+        total: result.total,
+        totalPages: Math.ceil(result.total / limit),
+      },
+    };
+  }
+
+  /**
+   * Dashboard stats, computed from real counts only — no invented figures.
+   * "Today" is orders placed today (by createdAt); revenue only counts
+   * orders whose payment actually succeeded (excludes refunded ones).
+   */
+  async getOrderStats() {
+    const now = this.clock();
+    const startOfToday = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+    );
+    const startOfTomorrow = new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000);
+
+    const [statusRows, total, today, revenueCents] = await Promise.all([
+      this.orderRepository.countByStatus(),
+      this.orderRepository.countByDateRange({}),
+      this.orderRepository.countByDateRange({ from: startOfToday, to: startOfTomorrow }),
+      this.orderRepository.sumPaidRevenueCents(),
+    ]);
+
+    const byStatus = {
+      PENDING_PAYMENT: 0,
+      PAID: 0,
+      PREPARING: 0,
+      READY: 0,
+      COMPLETED: 0,
+      CANCELLED: 0,
+    };
+    for (const row of statusRows) {
+      byStatus[row.status] = row._count._all;
+    }
+
+    return { total, byStatus, today, revenueCents };
+  }
+
+  async updateOrderStatus(id, input) {
+    const order = await this.orderRepository.findById(BigInt(id));
+    if (!order) {
+      throw new ApiError(HTTP_STATUS.NOT_FOUND, 'Order not found.');
+    }
+
+    if (!ORDER_STATUS_TRANSITIONS[order.status].includes(input.status)) {
+      throw new ApiError(
+        HTTP_STATUS.CONFLICT,
+        `Cannot change order status from ${order.status} to ${input.status}.`,
+      );
+    }
+
+    if (input.status === 'CANCELLED') {
+      // Same refund behaviour as the guest-initiated cancellation endpoint.
+      let paymentStatus = order.paymentStatus;
+      if (order.paymentStatus === 'PAID' && order.paymentReference) {
+        await this.stripeGateway.refundPayment({ paymentIntentId: order.paymentReference });
+        paymentStatus = 'REFUNDED';
+      }
+
+      const cancelledOrder = await this.orderRepository.updateStatus(BigInt(id), {
+        status: 'CANCELLED',
+        paymentStatus,
+        cancelledAt: this.clock(),
+        cancellationNote: input.cancellationNote,
+      });
+
+      await this.notificationService.notifyOrderCancelled(cancelledOrder);
+
+      return toOrderResponse(cancelledOrder);
+    }
+
+    const updatedOrder = await this.orderRepository.updateStatus(BigInt(id), {
+      status: input.status,
+    });
+
+    return toOrderResponse(updatedOrder);
+  }
+
   /**
    * Handles the `checkout.session.completed` webhook Stripe sends once a
    * guest finishes paying. Idempotent: replaying the same event is a no-op
@@ -238,4 +355,5 @@ module.exports = {
   toOrderResponse,
   createConfirmationCode,
   CANCELLABLE_STATUSES,
+  ORDER_STATUS_TRANSITIONS,
 };

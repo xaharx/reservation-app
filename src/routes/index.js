@@ -3,7 +3,7 @@ const { healthRouter } = require('./health.routes');
 const { reservationRouter, adminReservationRouter } = require('./reservation.routes');
 const { cmsRouter } = require('./cms.routes');
 const { menuRouter } = require('./menu.routes');
-const { orderRouter } = require('./order.routes');
+const { orderRouter, adminOrderRouter } = require('./order.routes');
 const { deviceRouter } = require('./device.routes');
 const { authRouter } = require('./auth.routes');
 const { adminCmsRouter } = require('./admin-cms.routes');
@@ -19,6 +19,7 @@ apiRouter.use('/admin/auth', authRouter);
 apiRouter.use('/admin/reservations', authenticate, adminReservationRouter);
 apiRouter.use('/menu', menuRouter);
 apiRouter.use('/orders', orderRouter);
+apiRouter.use('/admin/orders', authenticate, adminOrderRouter);
 apiRouter.use('/devices', deviceRouter);
 // adminCmsRouter applies its own authenticate() internally (see
 // admin-cms.routes.js) rather than here, since it covers many sub-paths.

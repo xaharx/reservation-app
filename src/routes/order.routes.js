@@ -1,12 +1,19 @@
 const { Router } = require('express');
 const { orderController } = require('../controllers/order.controller');
-const { validateBody, validateParams } = require('../validators/validate-request.middleware');
+const {
+  validateBody,
+  validateParams,
+  validateQuery,
+} = require('../validators/validate-request.middleware');
 const {
   createOrderSchema,
   lookupOrderSchema,
   orderCancellationParamsSchema,
   cancelOrderSchema,
+  listOrdersQuerySchema,
+  updateOrderStatusSchema,
 } = require('../validators/order.validator');
+const { bigIntIdParamSchema } = require('../validators/id-param.validator');
 
 const orderRouter = Router();
 
@@ -86,4 +93,131 @@ orderRouter.post(
   orderController.cancel,
 );
 
-module.exports = { orderRouter };
+const orderIdParamSchema = bigIntIdParamSchema('id');
+const adminOrderRouter = Router();
+
+/**
+ * @openapi
+ * /admin/orders:
+ *   get:
+ *     tags: [Orders]
+ *     summary: List orders for administration
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 20, maximum: 100 }
+ *       - in: query
+ *         name: status
+ *         schema: { type: string, enum: [PENDING_PAYMENT, PAID, PREPARING, READY, COMPLETED, CANCELLED] }
+ *       - in: query
+ *         name: search
+ *         description: "Matched against guest name, email, phone, and confirmation code."
+ *         schema: { type: string, maxLength: 191, example: aisha }
+ *       - in: query
+ *         name: sortBy
+ *         schema: { type: string, enum: [createdAt, guestName], default: createdAt }
+ *       - in: query
+ *         name: sortDir
+ *         schema: { type: string, enum: [asc, desc], default: desc }
+ *     responses:
+ *       200: { description: Orders retrieved successfully. }
+ *       401: { description: "Authentication required, or session expired/invalid." }
+ */
+adminOrderRouter.get('/', validateQuery(listOrdersQuerySchema), orderController.list);
+
+/**
+ * @openapi
+ * /admin/orders/stats:
+ *   get:
+ *     tags: [Orders]
+ *     summary: Get order counts and revenue for the admin dashboard
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200:
+ *         description: Order statistics retrieved successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean, example: true }
+ *                 message: { type: string }
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     total: { type: integer, example: 84 }
+ *                     byStatus:
+ *                       type: object
+ *                       properties:
+ *                         PENDING_PAYMENT: { type: integer }
+ *                         PAID: { type: integer }
+ *                         PREPARING: { type: integer }
+ *                         READY: { type: integer }
+ *                         COMPLETED: { type: integer }
+ *                         CANCELLED: { type: integer }
+ *                     today: { type: integer, example: 5 }
+ *                     revenueCents: { type: integer, example: 452300, description: "Sum of totalCents across orders whose payment succeeded (excludes refunded/unpaid)." }
+ *       401: { description: "Authentication required, or session expired/invalid." }
+ */
+adminOrderRouter.get('/stats', orderController.stats);
+
+/**
+ * @openapi
+ * /admin/orders/{id}:
+ *   get:
+ *     tags: [Orders]
+ *     summary: Get an order by ID for administration
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, example: '1' }
+ *     responses:
+ *       200: { description: Order retrieved successfully. }
+ *       401: { description: "Authentication required, or session expired/invalid." }
+ *       404: { description: Order not found. }
+ */
+adminOrderRouter.get('/:id', validateParams(orderIdParamSchema), orderController.getById);
+
+/**
+ * @openapi
+ * /admin/orders/{id}/status:
+ *   patch:
+ *     tags: [Orders]
+ *     summary: Update an order's fulfillment status
+ *     description: "Staff-driven lifecycle moves (PAID -> PREPARING -> READY -> COMPLETED, or cancel). PAID itself is set only by the Stripe webhook, never manually. Cancelling refunds via Stripe automatically if the order was already paid."
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, example: '1' }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [status]
+ *             properties:
+ *               status: { type: string, enum: [PENDING_PAYMENT, PAID, PREPARING, READY, COMPLETED, CANCELLED] }
+ *               cancellationNote: { type: string, maxLength: 500 }
+ *     responses:
+ *       200: { description: Order status updated successfully. }
+ *       401: { description: "Authentication required, or session expired/invalid." }
+ *       404: { description: Order not found. }
+ *       409: { description: Invalid lifecycle transition. }
+ */
+adminOrderRouter.patch(
+  '/:id/status',
+  validateParams(orderIdParamSchema),
+  validateBody(updateOrderStatusSchema),
+  orderController.updateStatus,
+);
+
+module.exports = { orderRouter, adminOrderRouter };

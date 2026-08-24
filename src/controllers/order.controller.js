@@ -28,6 +28,39 @@ function createOrderController(orderService = new OrderService()) {
         data: order,
       });
     }),
+    getById: asyncHandler(async (req, res) => {
+      const order = await orderService.getOrderById(req.params.id);
+      res.status(HTTP_STATUS.OK).json({
+        success: true,
+        message: 'Order retrieved successfully.',
+        data: order,
+      });
+    }),
+    list: asyncHandler(async (req, res) => {
+      const result = await orderService.listOrders(req.validated.query);
+      res.status(HTTP_STATUS.OK).json({
+        success: true,
+        message: 'Orders retrieved successfully.',
+        data: result.data,
+        meta: result.meta,
+      });
+    }),
+    stats: asyncHandler(async (req, res) => {
+      const stats = await orderService.getOrderStats();
+      res.status(HTTP_STATUS.OK).json({
+        success: true,
+        message: 'Order statistics retrieved successfully.',
+        data: stats,
+      });
+    }),
+    updateStatus: asyncHandler(async (req, res) => {
+      const order = await orderService.updateOrderStatus(req.params.id, req.body);
+      res.status(HTTP_STATUS.OK).json({
+        success: true,
+        message: 'Order status updated successfully.',
+        data: order,
+      });
+    }),
   };
 }
 

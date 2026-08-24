@@ -28,6 +28,9 @@ export function Sidebar() {
         <NavLink to="/reservations" className={navLinkClass}>
           Reservations
         </NavLink>
+        <NavLink to="/orders" className={navLinkClass}>
+          Orders
+        </NavLink>
 
         <SectionLabel>Content</SectionLabel>
         <NavLink to="/cms/home" className={navLinkClass}>
