@@ -1,8 +1,8 @@
 import React, { useRef, useState } from 'react';
 import {
   Alert,
-  findNodeHandle,
   KeyboardAvoidingView,
+  type LayoutChangeEvent,
   Platform,
   ScrollView,
   StyleSheet,
@@ -67,41 +67,36 @@ export default function ReservationFormScreen(_props: Props) {
   const [submitting, setSubmitting] = useState(false);
 
   // Keyboard-aware scrolling: the ScrollView doesn't automatically bring a
-  // newly focused TextInput above the keyboard, so we track the current
-  // scroll offset and, on focus, measure the field's on-screen position
-  // relative to the ScrollView and scroll just far enough to reveal it.
+  // newly focused TextInput above the keyboard. Rather than relying on
+  // TextInput.measureLayout (which needs a native-component ref and warns
+  // under this RN version's architecture), each field's vertical position
+  // is derived purely from onLayout — a field's layout `y` is relative to
+  // its parent, so summing the card's offset and the field's offset within
+  // the card gives its position relative to the ScrollView's content,
+  // independent of the current scroll/keyboard state.
   const scrollViewRef = useRef<ScrollView>(null);
-  const scrollOffsetRef = useRef(0);
-  const firstNameRef = useRef<TextInput>(null);
-  const lastNameRef = useRef<TextInput>(null);
-  const phoneRef = useRef<TextInput>(null);
-  const emailRef = useRef<TextInput>(null);
+  const cardYRef = useRef(0);
+  const fieldYRef = useRef<Record<string, number>>({});
 
-  function handleScroll(event: { nativeEvent: { contentOffset: { y: number } } }) {
-    scrollOffsetRef.current = event.nativeEvent.contentOffset.y;
+  function handleCardLayout(event: LayoutChangeEvent) {
+    cardYRef.current = event.nativeEvent.layout.y;
   }
 
-  function scrollFieldIntoView(inputRef: React.RefObject<TextInput | null>) {
-    const scrollNode = scrollViewRef.current;
-    const input = inputRef.current;
-    if (!scrollNode || !input) {
+  function handleFieldLayout(fieldKey: string, event: LayoutChangeEvent) {
+    fieldYRef.current[fieldKey] = event.nativeEvent.layout.y;
+  }
+
+  function scrollFieldIntoView(fieldKey: string) {
+    const fieldY = fieldYRef.current[fieldKey];
+    if (fieldY === undefined) {
       return;
     }
-    const scrollHandle = findNodeHandle(scrollNode);
-    if (!scrollHandle) {
-      return;
-    }
-    // Wait a frame so the keyboard-triggered layout has settled before measuring.
+    const TOP_PADDING = 24;
+    const targetY = Math.max(cardYRef.current + fieldY - TOP_PADDING, 0);
+    // Small delay so this runs after the keyboard-triggered resize has
+    // started, so the ScrollView has its (now-shorter) final height.
     requestAnimationFrame(() => {
-      input.measureLayout(
-        scrollHandle,
-        (_x: number, y: number) => {
-          const TOP_PADDING = 24;
-          const targetY = Math.max(scrollOffsetRef.current + y - TOP_PADDING, 0);
-          scrollNode.scrollTo({ y: targetY, animated: true });
-        },
-        () => {},
-      );
+      scrollViewRef.current?.scrollTo({ y: targetY, animated: true });
     });
   }
 
@@ -197,10 +192,8 @@ export default function ReservationFormScreen(_props: Props) {
         style={styles.flex}
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
-        onScroll={handleScroll}
-        scrollEventThrottle={16}
       >
-        <View style={styles.card}>
+        <View style={styles.card} onLayout={handleCardLayout}>
           <Text style={styles.heading}>Reservation</Text>
           <Text style={styles.subheading}>Book your table with us</Text>
 
@@ -211,8 +204,8 @@ export default function ReservationFormScreen(_props: Props) {
             onChangeText={setFirstName}
             placeholder="Enter your first name"
             error={errors.firstName}
-            inputRef={firstNameRef}
-            onFocus={() => scrollFieldIntoView(firstNameRef)}
+            onLayout={(event) => handleFieldLayout('firstName', event)}
+            onFocus={() => scrollFieldIntoView('firstName')}
           />
 
           <Field
@@ -222,8 +215,8 @@ export default function ReservationFormScreen(_props: Props) {
             onChangeText={setLastName}
             placeholder="Enter your last name"
             error={errors.lastName}
-            inputRef={lastNameRef}
-            onFocus={() => scrollFieldIntoView(lastNameRef)}
+            onLayout={(event) => handleFieldLayout('lastName', event)}
+            onFocus={() => scrollFieldIntoView('lastName')}
           />
 
           <Field
@@ -234,8 +227,8 @@ export default function ReservationFormScreen(_props: Props) {
             placeholder="Enter your contact number"
             keyboardType="phone-pad"
             error={errors.phone}
-            inputRef={phoneRef}
-            onFocus={() => scrollFieldIntoView(phoneRef)}
+            onLayout={(event) => handleFieldLayout('phone', event)}
+            onFocus={() => scrollFieldIntoView('phone')}
           />
 
           <Field
@@ -247,8 +240,8 @@ export default function ReservationFormScreen(_props: Props) {
             keyboardType="email-address"
             autoCapitalize="none"
             error={errors.email}
-            inputRef={emailRef}
-            onFocus={() => scrollFieldIntoView(emailRef)}
+            onLayout={(event) => handleFieldLayout('email', event)}
+            onFocus={() => scrollFieldIntoView('email')}
           />
 
           <Text style={styles.label}>Timing for Booking</Text>
@@ -355,7 +348,7 @@ type FieldProps = {
   error?: string;
   keyboardType?: 'default' | 'phone-pad' | 'email-address';
   autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
-  inputRef?: React.RefObject<TextInput | null>;
+  onLayout?: (event: LayoutChangeEvent) => void;
   onFocus?: () => void;
 };
 
@@ -368,18 +361,17 @@ function Field({
   error,
   keyboardType = 'default',
   autoCapitalize = 'sentences',
-  inputRef,
+  onLayout,
   onFocus,
 }: FieldProps) {
   return (
-    <View style={styles.fieldGroup}>
+    <View style={styles.fieldGroup} onLayout={onLayout}>
       <Text style={styles.label}>
         <Ionicons name={icon} size={13} color={colors.textMuted} /> {label}
       </Text>
       <View style={[styles.inputBox, error && styles.inputBoxError]}>
         <Ionicons name={icon} size={16} color={colors.textMuted} />
         <TextInput
-          ref={inputRef}
           value={value}
           onChangeText={onChangeText}
           onFocus={onFocus}
