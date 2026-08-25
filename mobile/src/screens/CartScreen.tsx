@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
+  type LayoutChangeEvent,
   Linking,
   Platform,
   ScrollView,
@@ -52,6 +53,35 @@ export default function CartScreen({ navigation }: Props) {
     confirmationCode: string;
     guestEmail: string;
   } | null>(null);
+
+  // Keyboard-aware scrolling: same approach as ReservationFormScreen — a
+  // field's onLayout position is relative to its parent, so composing the
+  // card's offset with the field's offset within the card gives the
+  // field's position relative to the ScrollView's content, without needing
+  // TextInput.measureLayout (which warns under this RN version).
+  const scrollViewRef = useRef<ScrollView>(null);
+  const cardYRef = useRef(0);
+  const fieldYRef = useRef<Record<string, number>>({});
+
+  function handleCardLayout(event: LayoutChangeEvent) {
+    cardYRef.current = event.nativeEvent.layout.y;
+  }
+
+  function handleFieldLayout(fieldKey: string, event: LayoutChangeEvent) {
+    fieldYRef.current[fieldKey] = event.nativeEvent.layout.y;
+  }
+
+  function scrollFieldIntoView(fieldKey: string) {
+    const fieldY = fieldYRef.current[fieldKey];
+    if (fieldY === undefined) {
+      return;
+    }
+    const TOP_PADDING = 24;
+    const targetY = Math.max(cardYRef.current + fieldY - TOP_PADDING, 0);
+    requestAnimationFrame(() => {
+      scrollViewRef.current?.scrollTo({ y: targetY, animated: true });
+    });
+  }
 
   async function handleCheckout() {
     const result = guestDetailsSchema.safeParse({ firstName, lastName, email, phone });
@@ -138,11 +168,12 @@ export default function CartScreen({ navigation }: Props) {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView
+        ref={scrollViewRef}
         style={styles.flex}
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.card}>
+        <View style={styles.card} onLayout={handleCardLayout}>
           <Text style={styles.heading}>Your Order</Text>
 
           {lines.map((line) => (
@@ -187,6 +218,8 @@ export default function CartScreen({ navigation }: Props) {
             onChangeText={setFirstName}
             placeholder="Enter your first name"
             error={errors.firstName}
+            onLayout={(event) => handleFieldLayout('firstName', event)}
+            onFocus={() => scrollFieldIntoView('firstName')}
           />
           <Field
             label="Last Name"
@@ -194,6 +227,8 @@ export default function CartScreen({ navigation }: Props) {
             onChangeText={setLastName}
             placeholder="Enter your last name"
             error={errors.lastName}
+            onLayout={(event) => handleFieldLayout('lastName', event)}
+            onFocus={() => scrollFieldIntoView('lastName')}
           />
           <Field
             label="Email Address"
@@ -203,6 +238,8 @@ export default function CartScreen({ navigation }: Props) {
             keyboardType="email-address"
             autoCapitalize="none"
             error={errors.email}
+            onLayout={(event) => handleFieldLayout('email', event)}
+            onFocus={() => scrollFieldIntoView('email')}
           />
           <Field
             label="Contact No."
@@ -211,6 +248,8 @@ export default function CartScreen({ navigation }: Props) {
             placeholder="Enter your contact number"
             keyboardType="phone-pad"
             error={errors.phone}
+            onLayout={(event) => handleFieldLayout('phone', event)}
+            onFocus={() => scrollFieldIntoView('phone')}
           />
 
           <TouchableOpacity
@@ -236,6 +275,8 @@ type FieldProps = {
   error?: string;
   keyboardType?: 'default' | 'phone-pad' | 'email-address';
   autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
+  onLayout?: (event: LayoutChangeEvent) => void;
+  onFocus?: () => void;
 };
 
 function Field({
@@ -246,14 +287,17 @@ function Field({
   error,
   keyboardType = 'default',
   autoCapitalize = 'sentences',
+  onLayout,
+  onFocus,
 }: FieldProps) {
   return (
-    <View style={styles.fieldGroup}>
+    <View style={styles.fieldGroup} onLayout={onLayout}>
       <Text style={styles.label}>{label}</Text>
       <View style={[styles.inputBox, error && styles.inputBoxError]}>
         <TextInput
           value={value}
           onChangeText={onChangeText}
+          onFocus={onFocus}
           placeholder={placeholder}
           placeholderTextColor={colors.textMuted}
           style={styles.textInput}
