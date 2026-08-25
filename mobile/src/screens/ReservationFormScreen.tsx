@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   Alert,
+  findNodeHandle,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -64,6 +65,45 @@ export default function ReservationFormScreen(_props: Props) {
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [submitting, setSubmitting] = useState(false);
+
+  // Keyboard-aware scrolling: the ScrollView doesn't automatically bring a
+  // newly focused TextInput above the keyboard, so we track the current
+  // scroll offset and, on focus, measure the field's on-screen position
+  // relative to the ScrollView and scroll just far enough to reveal it.
+  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollOffsetRef = useRef(0);
+  const firstNameRef = useRef<TextInput>(null);
+  const lastNameRef = useRef<TextInput>(null);
+  const phoneRef = useRef<TextInput>(null);
+  const emailRef = useRef<TextInput>(null);
+
+  function handleScroll(event: { nativeEvent: { contentOffset: { y: number } } }) {
+    scrollOffsetRef.current = event.nativeEvent.contentOffset.y;
+  }
+
+  function scrollFieldIntoView(inputRef: React.RefObject<TextInput | null>) {
+    const scrollNode = scrollViewRef.current;
+    const input = inputRef.current;
+    if (!scrollNode || !input) {
+      return;
+    }
+    const scrollHandle = findNodeHandle(scrollNode);
+    if (!scrollHandle) {
+      return;
+    }
+    // Wait a frame so the keyboard-triggered layout has settled before measuring.
+    requestAnimationFrame(() => {
+      input.measureLayout(
+        scrollHandle,
+        (_x: number, y: number) => {
+          const TOP_PADDING = 24;
+          const targetY = Math.max(scrollOffsetRef.current + y - TOP_PADDING, 0);
+          scrollNode.scrollTo({ y: targetY, animated: true });
+        },
+        () => {},
+      );
+    });
+  }
 
   function onChangeDate(event: DateTimePickerEvent, selected?: Date) {
     setShowDatePicker(Platform.OS === 'ios');
@@ -153,9 +193,12 @@ export default function ReservationFormScreen(_props: Props) {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView
+        ref={scrollViewRef}
         style={styles.flex}
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
       >
         <View style={styles.card}>
           <Text style={styles.heading}>Reservation</Text>
@@ -168,6 +211,8 @@ export default function ReservationFormScreen(_props: Props) {
             onChangeText={setFirstName}
             placeholder="Enter your first name"
             error={errors.firstName}
+            inputRef={firstNameRef}
+            onFocus={() => scrollFieldIntoView(firstNameRef)}
           />
 
           <Field
@@ -177,6 +222,8 @@ export default function ReservationFormScreen(_props: Props) {
             onChangeText={setLastName}
             placeholder="Enter your last name"
             error={errors.lastName}
+            inputRef={lastNameRef}
+            onFocus={() => scrollFieldIntoView(lastNameRef)}
           />
 
           <Field
@@ -187,6 +234,8 @@ export default function ReservationFormScreen(_props: Props) {
             placeholder="Enter your contact number"
             keyboardType="phone-pad"
             error={errors.phone}
+            inputRef={phoneRef}
+            onFocus={() => scrollFieldIntoView(phoneRef)}
           />
 
           <Field
@@ -198,6 +247,8 @@ export default function ReservationFormScreen(_props: Props) {
             keyboardType="email-address"
             autoCapitalize="none"
             error={errors.email}
+            inputRef={emailRef}
+            onFocus={() => scrollFieldIntoView(emailRef)}
           />
 
           <Text style={styles.label}>Timing for Booking</Text>
@@ -304,6 +355,8 @@ type FieldProps = {
   error?: string;
   keyboardType?: 'default' | 'phone-pad' | 'email-address';
   autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
+  inputRef?: React.RefObject<TextInput | null>;
+  onFocus?: () => void;
 };
 
 function Field({
@@ -315,6 +368,8 @@ function Field({
   error,
   keyboardType = 'default',
   autoCapitalize = 'sentences',
+  inputRef,
+  onFocus,
 }: FieldProps) {
   return (
     <View style={styles.fieldGroup}>
@@ -324,8 +379,10 @@ function Field({
       <View style={[styles.inputBox, error && styles.inputBoxError]}>
         <Ionicons name={icon} size={16} color={colors.textMuted} />
         <TextInput
+          ref={inputRef}
           value={value}
           onChangeText={onChangeText}
+          onFocus={onFocus}
           placeholder={placeholder}
           placeholderTextColor={colors.textMuted}
           style={styles.textInput}

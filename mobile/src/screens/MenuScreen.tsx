@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -23,9 +23,59 @@ function formatPrice(cents: number, currency: string): string {
   return new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(cents / 100);
 }
 
+const ALL_CATEGORY_ID = 'all';
+// How far past a category's top edge the user has to scroll before that
+// category is considered "active" — keeps the tab bar from flickering
+// between two categories right at the boundary between their sections.
+const ACTIVE_SECTION_OFFSET = 32;
+
 export default function MenuScreen({ navigation }: Props) {
   const { data, loading, refreshing, error, refetch } = useFetchOnMount(getMenu);
   const { lines, itemCount, subtotalCents, currency, addItem, updateQuantity } = useCart();
+
+  const [activeCategoryId, setActiveCategoryId] = useState<string>(ALL_CATEGORY_ID);
+  const scrollViewRef = useRef<ScrollView>(null);
+  // Each category section's y-offset within the ScrollView's content,
+  // captured via onLayout as the sections render. Used both to scroll to a
+  // category when its tab is tapped, and to figure out which category is
+  // active as the user scrolls.
+  const sectionOffsetsRef = useRef<Record<string, number>>({});
+  const sortedSectionIdsRef = useRef<string[]>([]);
+
+  function handleCategoryLayout(categoryId: string, y: number) {
+    sectionOffsetsRef.current[categoryId] = y;
+    if (!sortedSectionIdsRef.current.includes(categoryId)) {
+      sortedSectionIdsRef.current.push(categoryId);
+    }
+  }
+
+  function handleContentScroll(event: { nativeEvent: { contentOffset: { y: number } } }) {
+    const scrollY = event.nativeEvent.contentOffset.y;
+    const offsets = sectionOffsetsRef.current;
+    let nextActiveId = ALL_CATEGORY_ID;
+    for (const categoryId of sortedSectionIdsRef.current) {
+      const sectionTop = offsets[categoryId];
+      if (sectionTop === undefined) {
+        continue;
+      }
+      if (scrollY + ACTIVE_SECTION_OFFSET >= sectionTop) {
+        nextActiveId = categoryId;
+      }
+    }
+    setActiveCategoryId((current) => (current === nextActiveId ? current : nextActiveId));
+  }
+
+  function handleCategoryTabPress(categoryId: string) {
+    setActiveCategoryId(categoryId);
+    if (categoryId === ALL_CATEGORY_ID) {
+      scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+      return;
+    }
+    const sectionTop = sectionOffsetsRef.current[categoryId];
+    if (sectionTop !== undefined) {
+      scrollViewRef.current?.scrollTo({ y: Math.max(sectionTop - 8, 0), animated: true });
+    }
+  }
 
   if (loading) {
     return (
@@ -54,17 +104,46 @@ export default function MenuScreen({ navigation }: Props) {
 
   return (
     <View style={styles.flex}>
+      {categories.length > 0 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.categoryTabBar}
+          contentContainerStyle={styles.categoryTabBarContent}
+        >
+          <CategoryTab
+            label="All"
+            selected={activeCategoryId === ALL_CATEGORY_ID}
+            onPress={() => handleCategoryTabPress(ALL_CATEGORY_ID)}
+          />
+          {categories.map((category: MenuCategory) => (
+            <CategoryTab
+              key={category.id}
+              label={category.name}
+              selected={activeCategoryId === category.id}
+              onPress={() => handleCategoryTabPress(category.id)}
+            />
+          ))}
+        </ScrollView>
+      )}
+
       <ScrollView
+        ref={scrollViewRef}
         style={styles.flex}
         contentContainerStyle={styles.scrollContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refetch} />}
+        onScroll={handleContentScroll}
+        scrollEventThrottle={32}
       >
         {categories.length === 0 ? (
           <StateNotice icon="restaurant-outline" title="No menu published yet" />
         ) : (
           categories.map((category: MenuCategory) => (
-            <View key={category.id} style={styles.categoryBlock}>
-              <Text style={styles.categoryTitle}>{category.name}</Text>
+            <View
+              key={category.id}
+              style={styles.categoryBlock}
+              onLayout={(event) => handleCategoryLayout(category.id, event.nativeEvent.layout.y)}
+            >
               {!!category.description && (
                 <Text style={styles.categoryDescription}>{category.description}</Text>
               )}
@@ -138,6 +217,25 @@ export default function MenuScreen({ navigation }: Props) {
   );
 }
 
+type CategoryTabProps = {
+  label: string;
+  selected: boolean;
+  onPress: () => void;
+};
+
+function CategoryTab({ label, selected, onPress }: CategoryTabProps) {
+  return (
+    <TouchableOpacity
+      style={[styles.categoryTab, selected && styles.categoryTabSelected]}
+      onPress={onPress}
+    >
+      <Text style={[styles.categoryTabLabel, selected && styles.categoryTabLabelSelected]}>
+        {label}
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
 const styles = StyleSheet.create({
   flex: {
     flex: 1,
@@ -153,15 +251,39 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingBottom: 90,
   },
+  categoryTabBar: {
+    flexGrow: 0,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.08)',
+  },
+  categoryTabBarContent: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 8,
+  },
+  categoryTab: {
+    paddingHorizontal: 16,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.14)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  categoryTabSelected: {
+    backgroundColor: 'rgba(201, 162, 75, 0.16)',
+    borderColor: colors.gold,
+  },
+  categoryTabLabel: {
+    color: colors.mutedOnDark,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  categoryTabLabelSelected: {
+    color: colors.gold,
+  },
   categoryBlock: {
     marginBottom: 24,
-  },
-  categoryTitle: {
-    color: colors.gold,
-    fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: 1,
-    marginBottom: 4,
   },
   categoryDescription: {
     color: colors.mutedOnDark,
