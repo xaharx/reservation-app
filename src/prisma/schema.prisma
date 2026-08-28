@@ -133,6 +133,18 @@ model Order {
   subtotalCents    Int           @map("subtotal_cents") @db.UnsignedInt
   totalCents       Int           @map("total_cents") @db.UnsignedInt
   notes            String?       @db.VarChar(500)
+  // Delivery address snapshot, captured at checkout time. Columns stay
+  // nullable so existing orders placed before this feature aren't affected
+  // by the migration — only newly created orders are required (at the API
+  // validation layer) to supply these. Never updated after creation, so a
+  // guest changing their address later can't retroactively alter a past
+  // order's delivery destination.
+  deliveryAddressLine1 String?   @map("delivery_address_line_1") @db.VarChar(255)
+  deliveryAddressLine2 String?   @map("delivery_address_line_2") @db.VarChar(255)
+  deliveryCity         String?   @map("delivery_city") @db.VarChar(100)
+  deliveryState        String?   @map("delivery_state") @db.VarChar(100)
+  deliveryPostalCode   String?   @map("delivery_postal_code") @db.VarChar(24)
+  deliveryCountry      String?   @map("delivery_country") @db.VarChar(100)
   source           ReservationSource @default(MOBILE_APP)
   deviceId         String?       @map("device_id") @db.VarChar(255)
   os               String?       @db.VarChar(30)

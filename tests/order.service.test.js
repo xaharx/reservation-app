@@ -29,6 +29,12 @@ function makeOrder(overrides = {}) {
     subtotalCents: 2400,
     totalCents: 2400,
     notes: null,
+    deliveryAddressLine1: '123 Main Street',
+    deliveryAddressLine2: 'Apartment 4B',
+    deliveryCity: 'Miami',
+    deliveryState: 'Florida',
+    deliveryPostalCode: '33101',
+    deliveryCountry: 'USA',
     items: [
       {
         id: 1n,
@@ -84,18 +90,79 @@ test('OrderService.createOrder computes totals, creates the order, and starts a 
     email: 'aisha@example.com',
     phone: '+923001234567',
     items: [{ menuItemId: '1', quantity: 1 }],
+    deliveryAddress: {
+      addressLine1: '123 Main Street',
+      addressLine2: 'Apartment 4B',
+      city: 'Miami',
+      state: 'Florida',
+      postalCode: '33101',
+      country: 'USA',
+    },
   });
 
   assert.equal(createPayload.guestName, 'Aisha Khan');
   assert.equal(createPayload.subtotalCents, 2400);
   assert.equal(createPayload.totalCents, 2400);
   assert.equal(createPayload.items.create[0].lineCents, 2400);
+  assert.equal(createPayload.deliveryAddressLine1, '123 Main Street');
+  assert.equal(createPayload.deliveryAddressLine2, 'Apartment 4B');
+  assert.equal(createPayload.deliveryCity, 'Miami');
+  assert.equal(createPayload.deliveryState, 'Florida');
+  assert.equal(createPayload.deliveryPostalCode, '33101');
+  assert.equal(createPayload.deliveryCountry, 'USA');
   assert.equal(checkoutArgs.currency, 'usd');
   assert.equal(checkoutArgs.lineItems[0].unitCents, 2400);
   assert.match(checkoutArgs.successUrl, /status=success&confirmationCode=OD-TESTCODE01/);
   assert.equal(updatePayload.paymentReference, 'cs_test_123');
   assert.equal(result.order.confirmationCode, 'OD-TESTCODE01');
   assert.equal(result.checkoutUrl, 'https://checkout.stripe.com/cs_test_123');
+  // The order response echoes back exactly what was submitted, so the guest
+  // (and the restaurant) can see where this order is meant to be delivered.
+  assert.deepEqual(result.order.deliveryAddress, {
+    addressLine1: '123 Main Street',
+    addressLine2: 'Apartment 4B',
+    city: 'Miami',
+    state: 'Florida',
+    postalCode: '33101',
+    country: 'USA',
+  });
+});
+
+test('OrderService.createOrder omits optional addressLine2/state from the stored order when not provided', async () => {
+  let createPayload;
+  const service = new OrderService({
+    menuRepository: { findManyMenuItemsByIds: async () => [makeMenuItem()] },
+    orderRepository: {
+      create: async (data) => {
+        createPayload = data;
+        return makeOrder({ deliveryAddressLine2: null, deliveryState: null });
+      },
+      updateStatus: async (_id, data) => makeOrder({ ...data, deliveryAddressLine2: null, deliveryState: null }),
+    },
+    stripeGateway: {
+      createCheckoutSession: async () => ({ id: 'cs_test_123', url: 'https://checkout.stripe.com/cs_test_123' }),
+    },
+    confirmationCodeGenerator: () => 'OD-TESTCODE01',
+  });
+
+  const result = await service.createOrder({
+    firstName: 'Aisha',
+    lastName: 'Khan',
+    email: 'aisha@example.com',
+    phone: '+923001234567',
+    items: [{ menuItemId: '1', quantity: 1 }],
+    deliveryAddress: {
+      addressLine1: '123 Main Street',
+      city: 'Miami',
+      postalCode: '33101',
+      country: 'USA',
+    },
+  });
+
+  assert.equal(createPayload.deliveryAddressLine2, null);
+  assert.equal(createPayload.deliveryState, null);
+  assert.equal(result.order.deliveryAddress.addressLine2, null);
+  assert.equal(result.order.deliveryAddress.state, null);
 });
 
 test('OrderService.createOrder cancels the order and hides Stripe details if Checkout Session creation fails', async () => {
@@ -127,6 +194,12 @@ test('OrderService.createOrder cancels the order and hides Stripe details if Che
         email: 'aisha@example.com',
         phone: '+923001234567',
         items: [{ menuItemId: '1', quantity: 1 }],
+        deliveryAddress: {
+          addressLine1: '123 Main Street',
+          city: 'Miami',
+          postalCode: '33101',
+          country: 'USA',
+        },
       }),
     (error) => {
       assert.equal(error.statusCode, 500);
@@ -178,6 +251,31 @@ test('OrderService.lookupOrder returns the order when code and email match', asy
 
   assert.equal(result.confirmationCode, 'OD-TESTCODE01');
   assert.equal(result.items[0].itemName, 'Tagliatelle al Tartufo');
+  assert.equal(result.deliveryAddress.addressLine1, '123 Main Street');
+  assert.equal(result.deliveryAddress.city, 'Miami');
+});
+
+test('OrderService.lookupOrder returns a null deliveryAddress for an order placed before this feature existed', async () => {
+  const service = new OrderService({
+    orderRepository: {
+      findByConfirmationCode: async () =>
+        makeOrder({
+          deliveryAddressLine1: null,
+          deliveryAddressLine2: null,
+          deliveryCity: null,
+          deliveryState: null,
+          deliveryPostalCode: null,
+          deliveryCountry: null,
+        }),
+    },
+  });
+
+  const result = await service.lookupOrder({
+    confirmationCode: 'OD-TESTCODE01',
+    guestEmail: 'aisha@example.com',
+  });
+
+  assert.equal(result.deliveryAddress, null);
 });
 
 test('OrderService.lookupOrder rejects a mismatched email without leaking existence', async () => {
@@ -315,6 +413,14 @@ test('OrderService.getOrderById returns the order for a valid id', async () => {
   const result = await service.getOrderById('1');
 
   assert.equal(result.confirmationCode, 'OD-TESTCODE01');
+  assert.deepEqual(result.deliveryAddress, {
+    addressLine1: '123 Main Street',
+    addressLine2: 'Apartment 4B',
+    city: 'Miami',
+    state: 'Florida',
+    postalCode: '33101',
+    country: 'USA',
+  });
 });
 
 test('OrderService.getOrderById rejects an unknown id', async () => {

@@ -19,6 +19,19 @@ function Field({ label, value }: { label: string; value: string | number | null 
   );
 }
 
+// Unlike Field above, this renders nothing at all for an empty value — used
+// for delivery address rows, where an optional field like Address Line 2 or
+// State should simply not appear rather than show a "—" placeholder.
+function AddressField({ label, value }: { label: string; value: string | null }) {
+  if (!value) return null;
+  return (
+    <div>
+      <dt className="text-xs font-medium uppercase tracking-wide text-text-muted">{label}</dt>
+      <dd className="mt-0.5 text-sm text-text-dark">{value}</dd>
+    </div>
+  );
+}
+
 export function OrderDetailsPage() {
   const { id } = useParams<{ id: string }>();
   const { showToast } = useToast();
@@ -93,6 +106,20 @@ export function OrderDetailsPage() {
                 <Field label="Notes" value={order.notes} />
               </dl>
             </section>
+
+            {order.deliveryAddress && (
+              <section className="rounded-xl border border-card-border bg-cream p-5">
+                <h2 className="mb-4 text-base font-semibold text-text-dark">Delivery Address</h2>
+                <dl className="grid grid-cols-2 gap-4">
+                  <AddressField label="Address Line 1" value={order.deliveryAddress.addressLine1} />
+                  <AddressField label="Address Line 2" value={order.deliveryAddress.addressLine2} />
+                  <AddressField label="City" value={order.deliveryAddress.city} />
+                  <AddressField label="State" value={order.deliveryAddress.state} />
+                  <AddressField label="Postal Code" value={order.deliveryAddress.postalCode} />
+                  <AddressField label="Country" value={order.deliveryAddress.country} />
+                </dl>
+              </section>
+            )}
 
             <section className="rounded-xl border border-card-border bg-cream p-5">
               <h2 className="mb-4 text-base font-semibold text-text-dark">Items</h2>

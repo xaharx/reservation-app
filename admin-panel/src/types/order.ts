@@ -25,6 +25,18 @@ export type OrderItem = {
   notes: string | null;
 };
 
+// Snapshot of where the order was to be delivered, captured at checkout —
+// matches src/services/order.service.js's toOrderResponse() exactly. Null
+// for any order placed before this feature existed.
+export type DeliveryAddress = {
+  addressLine1: string;
+  addressLine2: string | null;
+  city: string;
+  state: string | null;
+  postalCode: string;
+  country: string;
+};
+
 export type Order = {
   id: string;
   confirmationCode: string;
@@ -37,6 +49,7 @@ export type Order = {
   subtotalCents: number;
   totalCents: number;
   notes: string | null;
+  deliveryAddress: DeliveryAddress | null;
   items: OrderItem[];
   paidAt: string | null;
   cancelledAt: string | null;

@@ -54,6 +54,18 @@ export type OrderItemResponse = {
   notes: string | null;
 };
 
+// Snapshot of where an order was delivered — captured once at checkout and
+// never updated afterwards, so it stays accurate to what was true when the
+// order was placed even if the guest's next order uses a different address.
+export type DeliveryAddress = {
+  addressLine1: string;
+  addressLine2: string | null;
+  city: string;
+  state: string | null;
+  postalCode: string;
+  country: string;
+};
+
 export type OrderResponse = {
   id: string;
   confirmationCode: string;
@@ -66,6 +78,8 @@ export type OrderResponse = {
   subtotalCents: number;
   totalCents: number;
   notes: string | null;
+  // null only for orders placed before this feature existed.
+  deliveryAddress: DeliveryAddress | null;
   items: OrderItemResponse[];
   paidAt: string | null;
   cancelledAt: string | null;
@@ -80,6 +94,14 @@ export type CreateOrderInput = {
   email: string;
   phone: string;
   items: { menuItemId: string; quantity: number; notes?: string }[];
+  deliveryAddress: {
+    addressLine1: string;
+    addressLine2?: string;
+    city: string;
+    state?: string;
+    postalCode: string;
+    country: string;
+  };
   notes?: string;
   pushToken?: string | null;
 };

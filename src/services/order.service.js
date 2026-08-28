@@ -41,6 +41,19 @@ function toOrderResponse(order) {
     subtotalCents: order.subtotalCents,
     totalCents: order.totalCents,
     notes: order.notes,
+    // null for orders placed before this field existed — never backfilled,
+    // since a delivery address is a snapshot of what the guest entered at
+    // checkout time, not something that can be reconstructed after the fact.
+    deliveryAddress: order.deliveryAddressLine1
+      ? {
+          addressLine1: order.deliveryAddressLine1,
+          addressLine2: order.deliveryAddressLine2,
+          city: order.deliveryCity,
+          state: order.deliveryState,
+          postalCode: order.deliveryPostalCode,
+          country: order.deliveryCountry,
+        }
+      : null,
     items: (order.items ?? []).map((item) => ({
       id: item.id.toString(),
       menuItemId: item.menuItemId.toString(),
@@ -123,6 +136,12 @@ class OrderService {
       subtotalCents,
       totalCents,
       notes: input.notes || null,
+      deliveryAddressLine1: input.deliveryAddress.addressLine1,
+      deliveryAddressLine2: input.deliveryAddress.addressLine2 || null,
+      deliveryCity: input.deliveryAddress.city,
+      deliveryState: input.deliveryAddress.state || null,
+      deliveryPostalCode: input.deliveryAddress.postalCode,
+      deliveryCountry: input.deliveryAddress.country,
       source: 'MOBILE_APP',
       deviceId: input.deviceId,
       os: input.os,

@@ -31,7 +31,7 @@ const orderRouter = Router();
  *           schema:
  *             type: object
  *             additionalProperties: false
- *             required: [firstName, lastName, email, phone, items]
+ *             required: [firstName, lastName, email, phone, items, deliveryAddress]
  *             properties:
  *               firstName: { type: string, example: Aisha }
  *               lastName: { type: string, example: Khan }
@@ -46,14 +46,26 @@ const orderRouter = Router();
  *                     menuItemId: { type: string, example: '3' }
  *                     quantity: { type: integer, minimum: 1, maximum: 20, example: 2 }
  *                     notes: { type: string, maxLength: 255 }
+ *               deliveryAddress:
+ *                 type: object
+ *                 description: Snapshot of where to deliver this order. Stored on the order itself, so it's unaffected by any address the guest enters on a later order.
+ *                 additionalProperties: false
+ *                 required: [addressLine1, city, postalCode, country]
+ *                 properties:
+ *                   addressLine1: { type: string, maxLength: 255, example: '123 Main Street' }
+ *                   addressLine2: { type: string, maxLength: 255, example: 'Apartment 4B' }
+ *                   city: { type: string, maxLength: 100, example: Miami }
+ *                   state: { type: string, maxLength: 100, example: Florida }
+ *                   postalCode: { type: string, maxLength: 24, example: '33101' }
+ *                   country: { type: string, maxLength: 100, example: USA }
  *               notes: { type: string, maxLength: 500 }
  *               deviceId: { type: string }
  *               os: { type: string, enum: [android, ios, web] }
  *     responses:
  *       201:
- *         description: Order created; data.checkoutUrl is a Stripe-hosted payment page.
+ *         description: Order created; data.order.deliveryAddress echoes the address just submitted; data.checkoutUrl is a Stripe-hosted payment page.
  *       422:
- *         description: Validation failed, or an item is unavailable.
+ *         description: Validation failed (including a missing/invalid deliveryAddress field), or an item is unavailable.
  */
 orderRouter.post('/', validateBody(createOrderSchema), orderController.create);
 

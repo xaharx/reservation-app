@@ -34,7 +34,27 @@ const guestDetailsSchema = z.object({
     .regex(/^(\+?1)?\d{10}$/, 'Enter a valid US phone number, e.g. +15551234567.'),
 });
 
-type FieldErrors = Partial<Record<keyof z.infer<typeof guestDetailsSchema>, string>>;
+// Mirrors src/validators/order.validator.js's deliveryAddressSchema exactly
+// — same required/optional fields, same max lengths, same postal code
+// pattern — so a payload that passes here is guaranteed to pass server-side
+// validation too.
+const deliveryAddressSchema = z.object({
+  addressLine1: z.string().trim().min(1, 'Address line 1 is required.').max(255),
+  addressLine2: z.string().trim().max(255).optional(),
+  city: z.string().trim().min(1, 'City is required.').max(100),
+  state: z.string().trim().max(100).optional(),
+  postalCode: z
+    .string()
+    .trim()
+    .min(1, 'Postal/ZIP code is required.')
+    .max(24)
+    .regex(/^[A-Za-z0-9\s-]{3,24}$/, 'Enter a valid postal/ZIP code.'),
+  country: z.string().trim().min(1, 'Country is required.').max(100),
+});
+
+const checkoutSchema = guestDetailsSchema.merge(deliveryAddressSchema);
+
+type FieldErrors = Partial<Record<keyof z.infer<typeof checkoutSchema>, string>>;
 
 function formatPrice(cents: number, currency: string): string {
   return new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(cents / 100);
@@ -47,6 +67,12 @@ export default function CartScreen({ navigation }: Props) {
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [addressLine1, setAddressLine1] = useState('');
+  const [addressLine2, setAddressLine2] = useState('');
+  const [city, setCity] = useState('');
+  const [stateProvince, setStateProvince] = useState('');
+  const [postalCode, setPostalCode] = useState('');
+  const [country, setCountry] = useState('');
   const [errors, setErrors] = useState<FieldErrors>({});
   const [submitting, setSubmitting] = useState(false);
   const [placedOrder, setPlacedOrder] = useState<{
@@ -84,7 +110,18 @@ export default function CartScreen({ navigation }: Props) {
   }
 
   async function handleCheckout() {
-    const result = guestDetailsSchema.safeParse({ firstName, lastName, email, phone });
+    const result = checkoutSchema.safeParse({
+      firstName,
+      lastName,
+      email,
+      phone,
+      addressLine1,
+      addressLine2,
+      city,
+      state: stateProvince,
+      postalCode,
+      country,
+    });
     const nextErrors: FieldErrors = {};
     if (!result.success) {
       for (const issue of result.error.issues) {
@@ -103,9 +140,21 @@ export default function CartScreen({ navigation }: Props) {
     setSubmitting(true);
     try {
       const pushToken = await getPushToken();
+      const validated = result.data;
       const { order, checkoutUrl } = await createOrder({
-        ...result.data,
+        firstName: validated.firstName,
+        lastName: validated.lastName,
+        email: validated.email,
+        phone: validated.phone,
         items: lines.map((line) => ({ menuItemId: line.menuItemId, quantity: line.quantity })),
+        deliveryAddress: {
+          addressLine1: validated.addressLine1,
+          ...(validated.addressLine2 ? { addressLine2: validated.addressLine2 } : {}),
+          city: validated.city,
+          ...(validated.state ? { state: validated.state } : {}),
+          postalCode: validated.postalCode,
+          country: validated.country,
+        },
         pushToken,
       });
       setPlacedOrder({ confirmationCode: order.confirmationCode, guestEmail: order.guestEmail });
@@ -250,6 +299,63 @@ export default function CartScreen({ navigation }: Props) {
             error={errors.phone}
             onLayout={(event) => handleFieldLayout('phone', event)}
             onFocus={() => scrollFieldIntoView('phone')}
+          />
+
+          <Text style={styles.sectionHeading}>Delivery Address</Text>
+
+          <Field
+            label="Address Line 1 *"
+            value={addressLine1}
+            onChangeText={setAddressLine1}
+            placeholder="Street address"
+            error={errors.addressLine1}
+            onLayout={(event) => handleFieldLayout('addressLine1', event)}
+            onFocus={() => scrollFieldIntoView('addressLine1')}
+          />
+          <Field
+            label="Address Line 2 (optional)"
+            value={addressLine2}
+            onChangeText={setAddressLine2}
+            placeholder="Apartment, suite, etc."
+            error={errors.addressLine2}
+            onLayout={(event) => handleFieldLayout('addressLine2', event)}
+            onFocus={() => scrollFieldIntoView('addressLine2')}
+          />
+          <Field
+            label="City *"
+            value={city}
+            onChangeText={setCity}
+            placeholder="Enter your city"
+            error={errors.city}
+            onLayout={(event) => handleFieldLayout('city', event)}
+            onFocus={() => scrollFieldIntoView('city')}
+          />
+          <Field
+            label="State/Province (optional)"
+            value={stateProvince}
+            onChangeText={setStateProvince}
+            placeholder="Enter your state or province"
+            error={errors.state}
+            onLayout={(event) => handleFieldLayout('state', event)}
+            onFocus={() => scrollFieldIntoView('state')}
+          />
+          <Field
+            label="ZIP/Postal Code *"
+            value={postalCode}
+            onChangeText={setPostalCode}
+            placeholder="Enter your ZIP or postal code"
+            error={errors.postalCode}
+            onLayout={(event) => handleFieldLayout('postalCode', event)}
+            onFocus={() => scrollFieldIntoView('postalCode')}
+          />
+          <Field
+            label="Country *"
+            value={country}
+            onChangeText={setCountry}
+            placeholder="Enter your country"
+            error={errors.country}
+            onLayout={(event) => handleFieldLayout('country', event)}
+            onFocus={() => scrollFieldIntoView('country')}
           />
 
           <TouchableOpacity

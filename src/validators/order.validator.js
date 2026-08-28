@@ -8,6 +8,27 @@ const orderItemSchema = z.object({
   notes: z.string().trim().max(255).optional(),
 });
 
+// Delivery address is captured once at checkout and stored as a snapshot on
+// the order itself (see schema.prisma) — it's never re-validated or reused
+// across orders, so column sizes/required-ness only need to satisfy this one
+// request shape. postalCode is deliberately kept format-generic (not
+// US-only) since `country` is free text rather than a fixed value.
+const deliveryAddressSchema = z
+  .object({
+    addressLine1: z.string().trim().min(1, 'Address line 1 is required.').max(255),
+    addressLine2: z.string().trim().max(255).optional(),
+    city: z.string().trim().min(1, 'City is required.').max(100),
+    state: z.string().trim().max(100).optional(),
+    postalCode: z
+      .string()
+      .trim()
+      .min(1, 'Postal code is required.')
+      .max(24)
+      .regex(/^[A-Za-z0-9\s-]{3,24}$/, 'Postal code must be a valid postal/ZIP code.'),
+    country: z.string().trim().min(1, 'Country is required.').max(100),
+  })
+  .strict();
+
 const createOrderSchema = z
   .object({
     firstName: z.string().trim().min(1, 'First name is required.').max(80),
@@ -18,6 +39,7 @@ const createOrderSchema = z
       .trim()
       .regex(/^\+?[1-9]\d{6,31}$/, 'Phone must be a valid international phone number.'),
     items: z.array(orderItemSchema).min(1, 'At least one item is required.').max(50),
+    deliveryAddress: deliveryAddressSchema,
     notes: z.string().trim().max(500).optional(),
     deviceId: z.string().max(255).optional(),
     os: z.enum(['android', 'ios', 'web']).optional(),
@@ -91,6 +113,7 @@ const updateOrderStatusSchema = z
 
 module.exports = {
   createOrderSchema,
+  deliveryAddressSchema,
   lookupOrderSchema,
   orderCancellationParamsSchema,
   cancelOrderSchema,
