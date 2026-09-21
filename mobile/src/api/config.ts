@@ -10,5 +10,5 @@ import { Platform } from 'react-native';
  */
 const DEFAULT_HOST = Platform.OS === 'android' ? '10.0.2.2' : 'localhost';
 
-export const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_BASE_URL ?? `http://${DEFAULT_HOST}:3000/api/v1`;
+export const API_BASE_URL = 'http://66.179.251.12:3000/api/v1';
+  // process.env.EXPO_PUBLIC_API_BASE_URL ?? `http://${DEFAULT_HOST}:3000/api/v1`;
