@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -152,13 +152,7 @@ export default function MenuScreen({ navigation }: Props) {
                 const quantity = quantityFor(item.id);
                 return (
                   <View key={item.id} style={styles.itemCard}>
-                    {!!item.imageUrl && (
-                      <Image
-                        source={{ uri: item.imageUrl }}
-                        style={styles.itemImage}
-                        resizeMode="cover"
-                      />
-                    )}
+                    <MenuItemImage item={item} />
                     <View style={styles.itemInfo}>
                       <Text style={styles.itemName}>{item.name}</Text>
                       {!!item.description && (
@@ -214,6 +208,53 @@ export default function MenuScreen({ navigation }: Props) {
         </TouchableOpacity>
       )}
     </View>
+  );
+}
+
+function MenuItemImage({ item }: { item: MenuItem }) {
+  const [failed, setFailed] = useState(!item.imageUrl);
+
+  // A refresh can replace a failed URL with a valid uploaded image. Reset the
+  // fallback state for that new source without changing the item-card layout.
+  useEffect(() => {
+    setFailed(!item.imageUrl);
+  }, [item.imageUrl]);
+
+  if (!item.imageUrl || failed) {
+    return (
+      <View
+        style={[styles.itemImage, styles.itemImagePlaceholder]}
+        accessibilityLabel={`${item.name} image unavailable`}
+      >
+        <Ionicons name="image-outline" size={20} color={colors.textMuted} />
+      </View>
+    );
+  }
+
+  return (
+    <Image
+      source={{ uri: item.imageUrl }}
+      style={styles.itemImage}
+      resizeMode="cover"
+      accessibilityLabel={item.name}
+      onError={(event) => {
+        setFailed(true);
+        if (__DEV__) {
+          let imageHost = 'unknown-host';
+          try {
+            imageHost = new URL(item.imageUrl).hostname;
+          } catch {
+            // The URI itself must not be printed in logs: it may contain
+            // credentials or temporary query parameters.
+          }
+          console.warn('Menu item image failed to load.', {
+            itemId: item.id,
+            imageHost,
+            error: event.nativeEvent.error,
+          });
+        }
+      }}
+    />
   );
 }
 
@@ -306,6 +347,10 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginRight: 12,
     backgroundColor: colors.inputBackground,
+  },
+  itemImagePlaceholder: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   itemInfo: {
     flex: 1,

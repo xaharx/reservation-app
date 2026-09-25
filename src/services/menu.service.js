@@ -3,6 +3,25 @@ const { MenuRepository } = require('../repositories/menu.repository');
 const { InMemoryCache } = require('../utils/in-memory-cache');
 const { serializeForJson } = require('../utils/json-serializer');
 
+// Google Image Search thumbnail hosts are short-lived proxy URLs, not image
+// storage. They intermittently fail on iOS (and can disappear at any time),
+// so never publish them to native clients as menu artwork. Menu photos should
+// instead be uploaded through the existing admin image upload flow, which
+// stores a stable URL in the menu_items.image_url column.
+function isTransientGoogleThumbnailUrl(value) {
+  if (typeof value !== 'string') {
+    return false;
+  }
+
+  try {
+    return /^encrypted-tbn\d+\.gstatic\.com$/i.test(new URL(value).hostname);
+  } catch {
+    // Leave malformed/other URLs alone so the native client's normal error
+    // fallback handles them without changing the public API contract.
+    return false;
+  }
+}
+
 class MenuService {
   constructor({
     repository = new MenuRepository(),
@@ -32,7 +51,7 @@ class MenuService {
                 description: item.description,
                 priceCents: item.priceCents,
                 currency: item.currency,
-                imageUrl: item.imageUrl,
+                imageUrl: isTransientGoogleThumbnailUrl(item.imageUrl) ? null : item.imageUrl,
               })),
           })),
       );
@@ -42,4 +61,4 @@ class MenuService {
 
 const menuService = new MenuService();
 
-module.exports = { MenuService, menuService };
+module.exports = { MenuService, menuService, isTransientGoogleThumbnailUrl };
