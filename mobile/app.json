@@ -40,7 +40,12 @@
         }
       ],
       "@react-native-firebase/app",
-      "expo-notifications",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/android-icon-monochrome.png"
+        }
+      ],
       [
         "expo-splash-screen",
         {
