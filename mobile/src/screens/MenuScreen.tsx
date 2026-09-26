@@ -152,12 +152,25 @@ export default function MenuScreen({ navigation }: Props) {
                 const quantity = quantityFor(item.id);
                 return (
                   <View key={item.id} style={styles.itemCard}>
-                    {!!item.imageUrl && (
+                    {/* {!!item.imageUrl && (
                       <Image
                         source={{ uri: item.imageUrl }}
                         style={styles.itemImage}
                         resizeMode="cover"
                       />
+                    )} */}
+                    {!!item.imageUrl && (
+                      <>
+                        {console.log('IMG URL:', item.imageUrl)}
+                        {console.log('IMG:', item)}
+                        <Image
+                          source={{ uri: item.imageUrl }}
+                          style={styles.itemImage}
+                          resizeMode="cover"
+                          onError={(e) => console.log('IMG ERROR:', e.nativeEvent.error)}
+                          onLoad={() => console.log('IMG LOADED:', item.imageUrl)}
+                        />
+                      </>
                     )}
                     <View style={styles.itemInfo}>
                       <Text style={styles.itemName}>{item.name}</Text>
@@ -170,10 +183,7 @@ export default function MenuScreen({ navigation }: Props) {
                     </View>
 
                     {quantity === 0 ? (
-                      <TouchableOpacity
-                        style={styles.addButton}
-                        onPress={() => addItem(item, 1)}
-                      >
+                      <TouchableOpacity style={styles.addButton} onPress={() => addItem(item, 1)}>
                         <Text style={styles.addButtonText}>ADD</Text>
                       </TouchableOpacity>
                     ) : (
@@ -202,10 +212,7 @@ export default function MenuScreen({ navigation }: Props) {
       </ScrollView>
 
       {itemCount > 0 && !!currency && (
-        <TouchableOpacity
-          style={styles.cartBar}
-          onPress={() => navigation.navigate('Cart')}
-        >
+        <TouchableOpacity style={styles.cartBar} onPress={() => navigation.navigate('Cart')}>
           <View style={styles.cartBarBadge}>
             <Text style={styles.cartBarBadgeText}>{itemCount}</Text>
           </View>

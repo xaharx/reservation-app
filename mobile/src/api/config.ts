@@ -1,14 +1,9 @@
-import { Platform } from 'react-native';
-
 /**
- * The backend runs locally during development (see ReservationApp/.env —
- * PORT=3000, API_PREFIX=/api/v1). Android emulators can't reach the host
- * machine's `localhost`, so they use the `10.0.2.2` alias instead; iOS
- * simulator and web can use `localhost` directly. Override with
- * EXPO_PUBLIC_API_BASE_URL (e.g. in a `.env` file) when testing against a
- * physical device or a non-local backend.
+ * Backend API origin. Override with EXPO_PUBLIC_API_BASE_URL in `.env`.
  */
-const DEFAULT_HOST = Platform.OS === 'android' ? '10.0.2.2' : 'localhost';
+export const API_BASE_URL = "http://66.179.251.12:3000/api/v1";
+  // process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://66.179.251.12:3000/api/v1';
 
-export const API_BASE_URL = 'http://66.179.251.12:3000/api/v1';
-  // process.env.EXPO_PUBLIC_API_BASE_URL ?? `http://${DEFAULT_HOST}:3000/api/v1`;
+// #region agent log
+fetch('http://127.0.0.1:7428/ingest/4063d08e-9d60-4cb7-9d29-b20c170daa4f',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'1ba5eb'},body:JSON.stringify({sessionId:'1ba5eb',hypothesisId:'B',location:'src/api/config.ts',message:'API_BASE_URL resolved',data:{apiBaseUrl:API_BASE_URL,fromEnv:Boolean(process.env.EXPO_PUBLIC_API_BASE_URL)},timestamp:Date.now()})}).catch(()=>{});
+// #endregion

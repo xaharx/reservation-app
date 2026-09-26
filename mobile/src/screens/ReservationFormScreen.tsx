@@ -24,6 +24,7 @@ import {
 } from '../validation/reservationSchema';
 import { ApiRequestError, createReservation } from '../api/reservations';
 import { getPushToken } from '../notifications/push';
+import { Dropdown } from 'react-native-element-dropdown';
 
 type Props = MainDrawerScreenProps<'Reservation'>;
 
@@ -65,6 +66,12 @@ export default function ReservationFormScreen(_props: Props) {
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [submitting, setSubmitting] = useState(false);
+
+  // Yeh function dono pickers ko band kar dega
+  const closePickers = () => {
+    setShowDatePicker(false);
+    setShowTimePicker(false);
+  };
 
   // Keyboard-aware scrolling: the ScrollView doesn't automatically bring a
   // newly focused TextInput above the keyboard. Rather than relying on
@@ -247,7 +254,11 @@ export default function ReservationFormScreen(_props: Props) {
           <Text style={styles.label}>Timing for Booking</Text>
           <View style={styles.row}>
             <TouchableOpacity
-              style={[styles.inputBox, styles.rowItem, errors.reservationDate && styles.inputBoxError]}
+              style={[
+                styles.inputBox,
+                styles.rowItem,
+                errors.reservationDate && styles.inputBoxError,
+              ]}
               onPress={() => setShowDatePicker(true)}
             >
               <Ionicons name="calendar-outline" size={16} color={colors.textMuted} />
@@ -257,7 +268,11 @@ export default function ReservationFormScreen(_props: Props) {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.inputBox, styles.rowItem, errors.reservationTime && styles.inputBoxError]}
+              style={[
+                styles.inputBox,
+                styles.rowItem,
+                errors.reservationTime && styles.inputBoxError,
+              ]}
               onPress={() => setShowTimePicker(true)}
             >
               <Ionicons name="time-outline" size={16} color={colors.textMuted} />
@@ -270,7 +285,7 @@ export default function ReservationFormScreen(_props: Props) {
             <Text style={styles.errorText}>{errors.reservationDate ?? errors.reservationTime}</Text>
           )}
 
-          {showDatePicker && (
+          {/* {showDatePicker && (
             <DateTimePicker
               value={date ?? new Date()}
               mode="date"
@@ -286,9 +301,61 @@ export default function ReservationFormScreen(_props: Props) {
               display="default"
               onChange={onChangeTime}
             />
+          )} */}
+
+          {/* Date Picker Section */}
+          {showDatePicker && (
+            <View style={styles.pickerContainer}>
+              <DateTimePicker
+                value={date ?? new Date()}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'} // iOS ke liye spinner
+                minimumDate={new Date()}
+                onChange={(event, selectedDate) => {
+                  // Android par picker khud band ho jata hai, iOS par nahi
+                  if (Platform.OS === 'android') {
+                    setShowDatePicker(false);
+                  }
+                  if (selectedDate) {
+                    onChangeDate(event, selectedDate); // Aapka existing function
+                  }
+                }}
+              />
+              {/* iOS ke liye Done Button */}
+              {Platform.OS === 'ios' && (
+                <TouchableOpacity style={styles.doneButton} onPress={closePickers}>
+                  <Text style={styles.doneButtonText}>Done</Text>
+                </TouchableOpacity>
+              )}
+            </View>
           )}
 
-          <Text style={styles.label}>Total Number of Person</Text>
+          {/* Time Picker Section - Ise tab hi render karein jab Date picker band ho */}
+          {showTimePicker && !showDatePicker && (
+            <View style={styles.pickerContainer}>
+              <DateTimePicker
+                value={time ?? new Date()}
+                mode="time"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'} // iOS ke liye spinner
+                onChange={(event, selectedTime) => {
+                  if (Platform.OS === 'android') {
+                    setShowTimePicker(false);
+                  }
+                  if (selectedTime) {
+                    onChangeTime(event, selectedTime); // Aapka existing function
+                  }
+                }}
+              />
+              {/* iOS ke liye Done Button */}
+              {Platform.OS === 'ios' && (
+                <TouchableOpacity style={styles.doneButton} onPress={closePickers}>
+                  <Text style={styles.doneButtonText}>Done</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+
+          {/* <Text style={styles.label}>Total Number of Person</Text>
           <View style={[styles.inputBox, errors.guestCount && styles.inputBoxError, styles.pickerBox]}>
             <Ionicons name="people-outline" size={16} color={colors.textMuted} />
             <Picker
@@ -302,8 +369,67 @@ export default function ReservationFormScreen(_props: Props) {
                 <Picker.Item key={count} label={String(count)} value={String(count)} />
               ))}
             </Picker>
+          </View> */}
+          <View>
+            <Text style={styles.label}>Total Number of Person</Text>
+
+            {Platform.OS === 'ios' ? (
+              // ✅ iOS: Dropdown (overlay issue nahi karega)
+              <View
+                style={[
+                  styles.inputBox,
+                  errors.guestCount && styles.inputBoxError,
+                  styles.pickerBox,
+                ]}
+              >
+                <Ionicons name="people-outline" size={16} color={colors.textMuted} />
+                <Dropdown
+                  style={styles.dropdown}
+                  containerStyle={styles.dropdownContainer}
+                  itemTextStyle={styles.dropdownItemText}
+                  selectedTextStyle={styles.dropdownSelectedText}
+                  placeholderStyle={styles.dropdownPlaceholder}
+                  iconStyle={styles.dropdownIcon}
+                  data={GUEST_COUNT_OPTIONS.map((c) => ({ label: String(c), value: c }))}
+                  labelField="label"
+                  valueField="value"
+                  placeholder="Select number of persons"
+                  value={guestCount}
+                  onChange={(item) => setGuestCount(item.value)}
+                  maxHeight={250}
+                  dropdownPosition="bottom"
+                />
+              </View>
+            ) : (
+              // ✅ Android: Native Picker (jaisa tha waisa)
+              <View
+                style={[
+                  styles.inputBox,
+                  errors.guestCount && styles.inputBoxError,
+                  styles.pickerBox,
+                ]}
+              >
+                <Ionicons name="people-outline" size={16} color={colors.textMuted} />
+                <Picker
+                  selectedValue={guestCount === null ? '' : String(guestCount)}
+                  onValueChange={(value: string) =>
+                    setGuestCount(value === '' ? null : Number(value))
+                  }
+                  style={styles.picker}
+                  dropdownIconColor={colors.textMuted}
+                >
+                  <Picker.Item label="Select number of persons" value="" color={colors.textMuted} />
+                  {GUEST_COUNT_OPTIONS.map((count) => (
+                    <Picker.Item key={count} label={String(count)} value={String(count)} />
+                  ))}
+                </Picker>
+              </View>
+            )}
           </View>
-          {!!errors.guestCount && <Text style={styles.errorText}>{errors.guestCount}</Text>}
+          {/* {!!errors.guestCount && <Text style={styles.errorText}>{errors.guestCount}</Text>} */}
+          {!!errors.guestCount && (
+            <Text style={styles.errorText}>Please select total number of person</Text>
+          )}
 
           <Text style={styles.label}>
             <Ionicons name="heart-outline" size={13} color={colors.textMuted} /> For
@@ -490,6 +616,59 @@ const styles = StyleSheet.create({
   picker: {
     flex: 1,
     color: colors.textDark,
+  },
+  // IOS datePicker ke liye
+  pickerContainer: {
+    backgroundColor: '#F5F0E6', // Aapki screenshot ke background se match karta hua
+    borderRadius: 10,
+    marginTop: 10,
+    paddingBottom: 10,
+  },
+  doneButton: {
+    alignSelf: 'flex-end',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    marginRight: 10,
+  },
+  doneButtonText: {
+    color: '#8B7355', // Aapke theme ka color
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  // iOS Dropdown ke liye (naye)
+  dropdown: {
+    flex: 1,
+    height: 48,
+    backgroundColor: 'transparent',
+    paddingHorizontal: 0,
+    marginLeft: 8,
+  },
+  dropdownContainer: {
+    borderRadius: 12,
+    borderColor: '#E0D5C0',
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  dropdownItemText: {
+    fontSize: 16,
+    color: '#000',
+  },
+  dropdownSelectedText: {
+    fontSize: 16,
+    color: '#000',
+    fontWeight: '500',
+  },
+  dropdownPlaceholder: {
+    fontSize: 16,
+    color: colors.textMuted,
+  },
+  dropdownIcon: {
+    width: 20,
+    height: 20,
   },
   row: {
     flexDirection: 'row',

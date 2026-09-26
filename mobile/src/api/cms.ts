@@ -16,7 +16,10 @@ async function getJson<T>(path: string): Promise<T> {
       method: 'GET',
       headers: { Accept: 'application/json' },
     });
-  } catch {
+  } catch (error) {
+    // #region agent log
+    fetch('http://127.0.0.1:7428/ingest/4063d08e-9d60-4cb7-9d29-b20c170daa4f',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'1ba5eb'},body:JSON.stringify({sessionId:'1ba5eb',hypothesisId:'A',location:'src/api/cms.ts:getJson',message:'fetch failed',data:{path,url:`${API_BASE_URL}${path}`,error:String(error)},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
     throw new ApiRequestError('Could not reach the server. Check your connection and try again.', 0);
   }
 
